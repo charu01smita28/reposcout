@@ -6,14 +6,11 @@ import {
   Calendar,
   MessageCircle,
   GitBranch,
-  ExternalLink,
   Copy,
   Check,
 } from "lucide-react"
 import { Card, CardHeader, CardTitle, CardContent } from "@/components/ui/card"
 import { Badge } from "@/components/ui/badge"
-import { Button } from "@/components/ui/button"
-import { packageDeepDive } from "@/lib/sample-data"
 
 const iconMap = {
   Users,
@@ -69,12 +66,30 @@ function StatusDot({ status }: { status: "green" | "amber" | "red" }) {
   return <span className={`inline-block size-2 rounded-full ${color}`} />
 }
 
-export function PackageDeepDive() {
+interface DeepDiveData {
+  name: string
+  version: string
+  description: string
+  health: number
+  metrics: {
+    label: string
+    value: string
+    icon: "Users" | "Calendar" | "MessageCircle" | "GitBranch"
+    status: "green" | "amber" | "red"
+  }[]
+  codeSnippet: string
+  codeSource: string
+}
+
+interface PackageDeepDiveProps {
+  data: DeepDiveData
+}
+
+export function PackageDeepDive({ data }: PackageDeepDiveProps) {
   const [copied, setCopied] = useState(false)
-  const pkg = packageDeepDive
 
   const handleCopy = () => {
-    navigator.clipboard.writeText(pkg.codeSnippet)
+    navigator.clipboard.writeText(data.codeSnippet)
     setCopied(true)
     setTimeout(() => setCopied(false), 2000)
   }
@@ -88,43 +103,30 @@ export function PackageDeepDive() {
         <CardContent className="pt-4 pb-5 flex flex-col gap-6">
           {/* Package header */}
           <div className="flex flex-col sm:flex-row items-start gap-6">
-            <HealthRing score={pkg.health} />
+            <HealthRing score={data.health} />
             <div className="flex flex-col gap-2 flex-1">
               <div className="flex items-center gap-3 flex-wrap">
                 <h3 className="text-xl font-bold font-mono text-[#6366f1]">
-                  {pkg.name}
+                  {data.name}
                 </h3>
-                <Badge
-                  variant="secondary"
-                  className="font-mono text-xs bg-muted text-muted-foreground"
-                >
-                  v{pkg.version}
-                </Badge>
+                {data.version && (
+                  <Badge
+                    variant="secondary"
+                    className="font-mono text-xs bg-muted text-muted-foreground"
+                  >
+                    v{data.version}
+                  </Badge>
+                )}
               </div>
               <p className="text-sm text-muted-foreground leading-relaxed">
-                {pkg.description}
+                {data.description}
               </p>
-              <Button
-                variant="outline"
-                size="sm"
-                className="w-fit text-[#6366f1] border-[#6366f1]/30 hover:bg-[#eef2ff] hover:text-[#6366f1]"
-                asChild
-              >
-                <a
-                  href="https://github.com/laurentS/slowapi"
-                  target="_blank"
-                  rel="noopener noreferrer"
-                >
-                  <ExternalLink className="size-3.5" />
-                  View Source Code
-                </a>
-              </Button>
             </div>
           </div>
 
           {/* Health breakdown metrics */}
           <div className="grid grid-cols-2 lg:grid-cols-4 gap-4">
-            {pkg.metrics.map((metric) => {
+            {data.metrics.map((metric) => {
               const Icon = iconMap[metric.icon]
               return (
                 <div
@@ -152,7 +154,7 @@ export function PackageDeepDive() {
           <div className="rounded-xl overflow-hidden border border-border">
             <div className="flex items-center justify-between bg-[#1e1e2e] px-4 py-2">
               <span className="text-xs text-[#a0a0b8] font-medium">
-                Implementation Pattern — Rate Limiter Setup
+                {data.codeSource}
               </span>
               <button
                 onClick={handleCopy}
@@ -173,12 +175,9 @@ export function PackageDeepDive() {
             </div>
             <pre className="bg-[#1e1e2e] px-4 py-4 overflow-x-auto">
               <code className="text-[13px] leading-relaxed font-mono text-[#e0def4]">
-                {pkg.codeSnippet}
+                {data.codeSnippet}
               </code>
             </pre>
-            <div className="bg-[#1e1e2e] border-t border-[#2a2a3e] px-4 py-2">
-              <span className="text-xs text-[#64648b]">{pkg.codeSource}</span>
-            </div>
           </div>
         </CardContent>
       </Card>

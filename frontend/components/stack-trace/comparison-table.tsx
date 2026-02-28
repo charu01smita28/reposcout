@@ -10,7 +10,7 @@ import {
   TableRow,
   TableCell,
 } from "@/components/ui/table"
-import { packageData, type PackageData } from "@/lib/sample-data"
+import { type PackageData } from "@/lib/sample-data"
 
 function HealthBadge({ score }: { score: number }) {
   const color =
@@ -75,11 +75,13 @@ function TrendIndicator({
 }
 
 interface ComparisonTableProps {
+  data: PackageData[]
   onSelectPackage: (pkg: PackageData) => void
   selectedPackage: string | null
 }
 
 export function ComparisonTable({
+  data,
   onSelectPackage,
   selectedPackage,
 }: ComparisonTableProps) {
@@ -114,7 +116,7 @@ export function ComparisonTable({
               </TableRow>
             </TableHeader>
             <TableBody>
-              {packageData.map((pkg) => (
+              {data.map((pkg) => (
                 <TableRow
                   key={pkg.name}
                   onClick={() => onSelectPackage(pkg)}

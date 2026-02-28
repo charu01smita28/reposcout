@@ -8,13 +8,22 @@ import {
   CollapsibleContent,
   CollapsibleTrigger,
 } from "@/components/ui/collapsible"
-import { aiSynthesis } from "@/lib/sample-data"
+import ReactMarkdown from "react-markdown"
+import remarkGfm from "remark-gfm"
+
+interface SynthesisData {
+  summary: string
+  recommendation: string
+  dataSources: string[]
+  followUps: { text: string; borderColor: string }[]
+}
 
 interface AISynthesisProps {
+  data: SynthesisData
   onFollowUp: (query: string) => void
 }
 
-export function AISynthesis({ onFollowUp }: AISynthesisProps) {
+export function AISynthesis({ data, onFollowUp }: AISynthesisProps) {
   const [sourcesOpen, setSourcesOpen] = useState(false)
 
   return (
@@ -30,18 +39,13 @@ export function AISynthesis({ onFollowUp }: AISynthesisProps) {
           {/* Summary */}
           <div className="flex flex-col gap-2">
             <p className="text-sm text-muted-foreground leading-relaxed">
-              {aiSynthesis.summary}
+              {data.summary}
             </p>
-            <p
-              className="text-sm text-foreground leading-relaxed"
-              dangerouslySetInnerHTML={{
-                __html: aiSynthesis.recommendation
-                  .replace(
-                    /\*\*(.*?)\*\*/g,
-                    '<strong class="text-foreground font-semibold">$1</strong>'
-                  ),
-              }}
-            />
+            <div className="text-sm text-foreground leading-relaxed prose prose-sm max-w-none prose-headings:text-foreground prose-headings:text-sm prose-headings:font-semibold prose-headings:mt-3 prose-headings:mb-1 prose-p:my-1.5 prose-p:leading-relaxed prose-ul:my-1 prose-li:my-0.5 prose-hr:my-2 prose-hr:border-border/40 prose-strong:text-foreground prose-a:text-primary prose-a:no-underline hover:prose-a:underline prose-table:text-xs prose-th:bg-muted/50 prose-th:px-2 prose-th:py-1.5 prose-td:px-2 prose-td:py-1.5 prose-th:font-medium prose-th:text-left prose-td:text-foreground prose-th:text-foreground">
+              <div className="overflow-x-auto">
+                <ReactMarkdown remarkPlugins={[remarkGfm]}>{data.recommendation}</ReactMarkdown>
+              </div>
+            </div>
           </div>
 
           {/* Data Sources */}
@@ -56,7 +60,7 @@ export function AISynthesis({ onFollowUp }: AISynthesisProps) {
             </CollapsibleTrigger>
             <CollapsibleContent className="pt-2">
               <ul className="flex flex-col gap-1.5 pl-5 list-disc">
-                {aiSynthesis.dataSources.map((source) => (
+                {data.dataSources.map((source) => (
                   <li
                     key={source}
                     className="text-xs text-muted-foreground"
@@ -74,7 +78,7 @@ export function AISynthesis({ onFollowUp }: AISynthesisProps) {
               Suggested follow-ups
             </p>
             <div className="flex flex-col gap-2">
-              {aiSynthesis.followUps.map((followUp) => (
+              {data.followUps.map((followUp) => (
                 <button
                   key={followUp.text}
                   onClick={() => onFollowUp(followUp.text)}

@@ -28,7 +28,7 @@ export function SearchHero({
   onModeChange,
 }: SearchHeroProps) {
   return (
-    <section className="flex flex-col items-center px-6 py-12 gap-6">
+    <section className="flex flex-col items-center px-6 pt-24 pb-12 gap-6">
       <div className="text-center flex flex-col gap-3 max-w-2xl">
         <h1 className="text-3xl font-bold text-foreground text-balance">
           The Open Source Intelligence Engine
