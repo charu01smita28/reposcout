@@ -1,6 +1,6 @@
 from fastapi import FastAPI, HTTPException
 from fastapi.middleware.cors import CORSMiddleware
-from pydantic import BaseModel
+from backend.models import SearchRequest
 from backend.agents.orchestrator import run_agent
 from backend.agents.package_intel import get_package_stats, compare_packages_intel, search_packages
 from backend.utils.duckdb_client import get_dataset_stats, get_dependents_count, get_dependency_tree, get_reverse_dependencies
@@ -15,13 +15,6 @@ app.add_middleware(
     allow_methods=["*"],
     allow_headers=["*"],
 )
-
-
-# --- Request Models ---
-
-class SearchRequest(BaseModel):
-    query: str
-    mode: str = "explore"  # "explore" | "compare" | "health_check"
 
 
 # --- Routes ---

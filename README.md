@@ -2,9 +2,9 @@
 
 > **"RepoScout is the first intelligence engine built on top of the entire open source ecosystem. It doesn't guess — it knows."**
 
-Query **2.6M packages** and **235M dependency relationships**. Real data, not opinions.
+Query **85K+ actively maintained packages** with real-time stats, **YoY growth trends**, and **rich metadata** from PyPI. Real data, not opinions.
 
-RepoScout is an AI-powered research tool that helps developers make data-driven decisions about open source packages. Instead of relying on blog posts, Reddit threads, or ChatGPT's training data, RepoScout queries a pre-indexed dataset of the entire PyPI ecosystem — data no LLM has access to — and combines it with live GitHub code analysis powered by Mistral AI.
+RepoScout is an AI-powered research tool that helps developers make data-driven decisions about open source packages. Instead of relying on blog posts, Reddit threads, or ChatGPT's training data, RepoScout queries a pre-indexed dataset of the PyPI ecosystem — enriched with full README descriptions, keywords, classifiers, version history, and live GitHub metadata — and combines it with AI-powered code analysis via Mistral AI.
 
 ---
 
@@ -14,11 +14,11 @@ RepoScout is an AI-powered research tool that helps developers make data-driven 
 |---|---|---|---|
 | "How many projects use FastAPI?" | Guesses from training data | Can't answer | **Exact number from indexed data** |
 | "Is library X actively maintained?" | Outdated info | Manual checking | **Real-time health score** |
-| "What's growing fastest in Python ML?" | Generic answer | Can't analyze trends | **Computed from 235M relationships** |
+| "What's growing fastest in Python ML?" | Generic answer | Can't analyze trends | **Computed from YoY growth data** |
 | "Compare implementation patterns" | General knowledge | Keyword file matches | **Actual code analysis + adoption data** |
 | Dependency graph traversal | Impossible | Impossible | **Native capability** |
 
-**The data moat:** RepoScout has a queryable database of package metadata and dependency relationships that no LLM has been trained on.
+**The data moat:** RepoScout has a queryable database of package metadata, dependency relationships, and rich descriptions that no LLM has been trained on.
 
 ---
 
@@ -28,7 +28,7 @@ RepoScout is an AI-powered research tool that helps developers make data-driven 
 
 > **Example:** "How do Python projects handle rate limiting?"
 
-RepoScout runs semantic search across 2.6M package descriptions, queries the dependency graph for adoption stats, fetches actual source code from top packages via GitHub, and synthesizes a comparison with real numbers.
+RepoScout runs semantic search across 85K+ package descriptions (full READMEs, keywords, classifiers), queries the dependency graph for adoption stats, fetches actual source code from top packages via GitHub, and synthesizes a comparison with real numbers.
 
 **What you get:**
 - "47 Python packages relate to rate limiting"
@@ -42,7 +42,7 @@ RepoScout runs semantic search across 2.6M package descriptions, queries the dep
 
 > **Example:** "FastAPI vs Django for a new API project?"
 
-Pulls structured data for both packages, compares dependents count, growth trajectory, maintainer activity, version frequency, and stars. Computes health scores, fetches code samples showing usage patterns, and gives a data-backed recommendation.
+Pulls structured data for both packages, compares dependents count, YoY growth trajectory, maintainer activity, version frequency, and stars. Computes health scores, fetches code samples showing usage patterns, and gives a data-backed recommendation.
 
 ### 3. "Is this dependency safe?"
 
@@ -119,19 +119,23 @@ Every package gets a proprietary health score from 0-100.
                               │
                               ▼
 ┌──────────────────────────────────────────────────────────────┐
-│                       DATA LAYER                             │
+│                    THREE-LAYER DATA STACK                     │
 │                                                              │
-│  DuckDB (structured queries)                                 │
-│  ├── projects ──── 2.6M packages (Libraries.io + deps.dev)  │
-│  ├── deps ──────── 235M dependency relationships             │
-│  └── versions ──── version history with timestamps           │
+│  LAYER 2 — Fresh Ecosystem Snapshot (deps.dev + PyPI)        │
+│  ├── packages ──────── 85K packages (stars, forks, growth)   │
+│  ├── pypi_metadata ─── 85K (README, keywords, classifiers,  │
+│  │                      versions, license, dependencies)     │
+│  └── growth data ───── YoY growth % (2025 vs 2026)          │
 │                                                              │
-│  Qdrant (semantic search)                                    │
-│  └── 400K+ Python package description embeddings             │
+│  LAYER 1 — Historical Graph (Libraries.io) [Future Extension]│
+│  ├── lib_projects ──── 400K PyPI packages                    │
+│  ├── lib_deps ──────── 235M dependency relationships         │
+│  └── lib_versions ──── version history with timestamps       │
 │                                                              │
-│  Live Sources                                                │
-│  ├── PyPI JSON API ── fresh metadata supplement              │
-│  └── GitHub raw URLs ── source code fetching                 │
+│  LAYER 3 — Live Intelligence (per-request)                   │
+│  ├── PyPI JSON API ── real-time metadata                     │
+│  ├── GitHub raw URLs ── source code fetching                 │
+│  └── Qdrant Cloud ── semantic search (Mistral Embed, 1024d)  │
 └──────────────────────────────────────────────────────────────┘
 ```
 
@@ -141,10 +145,11 @@ Every package gets a proprietary health score from 0-100.
 
 | Component | Technology | Role |
 |-----------|-----------|------|
-| Frontend | Next.js, shadcn/ui, Plotly | Search UI, charts, health visualizations |
+| Frontend | Next.js, shadcn/ui | Search UI, charts, health visualizations |
 | Backend | Python, FastAPI | API server, agent coordination |
-| Structured Data | DuckDB | 2.6M packages, 235M dependency queries |
-| Semantic Search | Qdrant + Mistral Embed | Natural language package discovery |
+| Structured Data | DuckDB | Package stats, comparisons, growth trends |
+| Rich Metadata | PyPI API bulk fetch | README descriptions, keywords, classifiers, versions |
+| Semantic Search | Qdrant Cloud + Mistral Embed | Natural language package discovery (80K+ vectors) |
 | Orchestration | Mistral Large | Query classification, function calling, synthesis |
 | Code Analysis | Devstral | Source code pattern extraction |
 | Live Data | PyPI API, GitHub Raw URLs | Fresh metadata + source code |
@@ -157,11 +162,23 @@ Every package gets a proprietary health score from 0-100.
 - **Comparison Tables** — Side-by-side metrics with health indicators, stars, and trend arrows
 - **RepoScout Score Rings** — Color-coded 0-100 health metric for every package
 - **Adoption Charts** — Horizontal bar charts showing real dependent counts
-- **Growth Trend Lines** — Line charts tracking package adoption over time
+- **Growth Trend Lines** — YoY growth percentages with visual indicators
 - **Implementation Patterns** — Syntax-highlighted code blocks pulled from actual source files
 - **AI Analysis** — Data-backed synthesis with suggested follow-up questions
 
 ---
+
+## Data Architecture
+
+RepoScout uses a three-layer data architecture:
+
+| Layer | Source | What's in DuckDB | Rows |
+|-------|--------|-------------------|------|
+| **Layer 2** | deps.dev (BigQuery) + PyPI API | `packages` (stats, growth), `pypi_metadata` (READMEs, keywords, versions) | 85K each |
+| **Layer 1** | Libraries.io 2020 | `lib_projects`, `lib_deps`, `lib_versions` | 400K / 235M / 2M |
+| **Layer 3** | PyPI API + GitHub + Qdrant Cloud | Live per-request + semantic search | On demand + 80K vectors |
+
+Layer 2 is primary (fresh, rich data). Layer 3 adds live intelligence + semantic search via Qdrant Cloud (Mistral Embed, 1024 dimensions). Layer 1 is a future extension for historical dependency graph analysis.
 
 ## Setup
 
@@ -171,23 +188,31 @@ pip install -r backend/requirements.txt
 
 # Set environment variables
 cp .env.example .env
-# Add MISTRAL_API_KEY and GITHUB_TOKEN
+# Add MISTRAL_API_KEY, QDRANT_URL, QDRANT_API_KEY
 
-# Load data into DuckDB
-python -m scripts.load_librariesio              # projects + versions (~5 min)
-python -m scripts.load_librariesio --with-deps  # + dependency graph (~30 min)
+# Build the database
+# 1. Place BigQuery exports in data/layer2/ (dependents.csv, bridge.csv, projects.csv)
+python scripts/setup_layer2.py                    # ~1 min
 
-# Load fresh BigQuery data (optional)
-python -m scripts.load_bigquery
+# 2. Add growth trends
+# Place dependents_2025.csv in data/layer2/
+python scripts/add_growth_data.py                 # ~10 sec
 
-# Generate embeddings for semantic search
-python -m scripts.generate_embeddings --limit 50000
+# 3. Fetch rich PyPI metadata (READMEs, keywords, classifiers)
+python scripts/fetch_pypi_metadata.py             # ~25 min, free, cached
+
+# 4. Generate embeddings for semantic search (Qdrant Cloud)
+python scripts/generate_embeddings.py             # ~30 min, needs Mistral API key + Qdrant Cloud
+
+# 5. (Future Extension) Add historical data from Libraries.io
+# python scripts/setup_layer1.py                  # ~5 min
+# python scripts/setup_layer1.py --with-deps      # ~30 min for full dep graph
 
 # Start backend
 uvicorn backend.main:app --reload --port 8000
 
 # Start frontend (in another terminal)
-cd frontend && npm run dev
+cd frontend && pnpm install && pnpm dev
 ```
 
 ## API
@@ -202,11 +227,32 @@ cd frontend && npm run dev
 | `GET` | `/api/search/quick` | Fast semantic search |
 | `GET` | `/api/dependents/{name}` | Reverse dependency lookup |
 
+## Embedding Pipeline
+
+RepoScout uses a custom text cleaning pipeline to generate high-quality embeddings from PyPI package metadata:
+
+1. **Text Extraction** — For each package, we build embedding text from:
+   - Package name + summary
+   - Keywords (when available)
+   - Classifier-derived metadata: frameworks, topics, environment
+   - Meaningful README sections (extracted by heading-title matching)
+
+2. **README Cleaning** (7-phase pipeline in `scripts/text_cleaner.py`):
+   - Code block extraction → HTML removal → Badge removal → Boilerplate section removal → URL removal → Markdown formatting strip → Whitespace cleanup
+
+3. **Section Extraction** — Instead of embedding raw READMEs, we parse headings and extract only semantically useful sections ("Features", "Overview", "What is it", "Dependencies", etc.)
+
+4. **Vectorization** — Mistral Embed (1024 dimensions) encodes the cleaned text, stored in Qdrant Cloud with lean payload metadata for fast retrieval
+
+**Result:** ~50-500 tokens of clean, semantically rich text per package across 80K+ vectors.
+
+---
+
 ## Data Sources
 
-- [**Libraries.io Open Data**](https://zenodo.org/record/3626071) — 2.6M packages, 235M dependency relationships (CC license)
-- [**Google deps.dev**](https://deps.dev/) — supplementary fresh package data via BigQuery
-- [**PyPI JSON API**](https://pypi.org) — live metadata for current package versions
+- [**Google deps.dev**](https://deps.dev/) — fresh package stats via BigQuery (primary data source)
+- [**PyPI JSON API**](https://pypi.org) — rich metadata: full README, keywords, classifiers, version history
+- [**Libraries.io Open Data**](https://zenodo.org/record/3626071) — historical dependency graph (400K packages, 235M relationships)
 - **GitHub Raw URLs** — source code fetching (no API rate limits)
 
 ## License
