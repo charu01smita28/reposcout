@@ -1,0 +1,11 @@
+fastapi
+uvicorn[standard]
+duckdb
+qdrant-client
+mistralai
+httpx
+plotly
+pandas
+numpy
+python-dotenv
+pydantic
