@@ -1,6 +1,6 @@
 import json
 from mistralai import Mistral
-from backend.config import MISTRAL_API_KEY, MISTRAL_LARGE
+from backend.config import MISTRAL_API_KEY, MISTRAL_LARGE, MINISTRAL
 from backend.agents.package_intel import (
     search_packages,
     get_package_stats,
@@ -156,8 +156,43 @@ async def execute_tool(name: str, arguments: str) -> str:
     return json.dumps(result, default=str)
 
 
-async def run_agent(user_query: str, mode: str = "explore") -> dict:
+def classify_query(query: str) -> str:
+    """Use Ministral 8B to classify query intent. Fast, cheap, accurate."""
     client = get_client()
+    try:
+        response = client.chat.complete(
+            model=MINISTRAL,
+            messages=[
+                {
+                    "role": "system",
+                    "content": (
+                        "You are a query classifier for a Python package intelligence tool. "
+                        "Classify the user's query into exactly one category.\n\n"
+                        "Categories:\n"
+                        "- explore: searching for packages, discovering tools, finding what's popular or trending\n"
+                        "- compare: comparing two or more specific packages head-to-head\n"
+                        "- health_check: checking if a specific package is safe, maintained, or reliable\n\n"
+                        "Respond with ONLY the category name, nothing else."
+                    ),
+                },
+                {"role": "user", "content": query},
+            ],
+            max_tokens=10,
+        )
+        mode = response.choices[0].message.content.strip().lower()
+        if mode in ("explore", "compare", "health_check"):
+            return mode
+    except Exception:
+        pass
+    return "explore"
+
+
+async def run_agent(user_query: str, mode: str = "auto") -> dict:
+    client = get_client()
+
+    # Auto-detect mode if not explicitly set
+    if mode == "auto":
+        mode = classify_query(user_query)
 
     mode_context = ""
     if mode == "compare":
@@ -171,6 +206,8 @@ async def run_agent(user_query: str, mode: str = "explore") -> dict:
     ]
 
     tool_calls_log = []
+    packages_data = []  # structured package stats for frontend
+    search_data = None  # search results for frontend
 
     response = client.chat.complete(
         model=MISTRAL_LARGE,
@@ -192,12 +229,21 @@ async def run_agent(user_query: str, mode: str = "explore") -> dict:
             tool_args = tool_call.function.arguments
 
             result = await execute_tool(tool_name, tool_args)
+            result_parsed = json.loads(result) if isinstance(result, str) else result
 
             tool_calls_log.append({
                 "tool": tool_name,
                 "args": json.loads(tool_args) if isinstance(tool_args, str) else tool_args,
                 "result_preview": result[:500] if len(result) > 500 else result,
             })
+
+            # Collect structured data for frontend
+            if tool_name == "search_packages":
+                search_data = result_parsed
+            elif tool_name == "get_package_stats" and "error" not in result_parsed:
+                packages_data.append(result_parsed)
+            elif tool_name == "compare_packages" and "packages" in result_parsed:
+                packages_data.extend(result_parsed["packages"])
 
             messages.append({
                 "role": "tool",
@@ -219,4 +265,7 @@ async def run_agent(user_query: str, mode: str = "explore") -> dict:
         "analysis": final_text,
         "tool_calls": tool_calls_log,
         "iterations": iteration,
+        "mode": mode,
+        "packages": packages_data,
+        "search": search_data,
     }

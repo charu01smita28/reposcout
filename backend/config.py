@@ -19,6 +19,7 @@ GITHUB_TOKEN = os.getenv("GITHUB_TOKEN", "")
 
 # --- Mistral Models ---
 MISTRAL_LARGE = "mistral-large-latest"
+MINISTRAL = "ministral-8b-latest"
 DEVSTRAL = "devstral-small-latest"
 MISTRAL_EMBED = "mistral-embed"
 

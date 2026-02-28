@@ -73,6 +73,7 @@ async def get_package_stats(package_name: str) -> dict:
             "total_versions": metrics.get("total_versions", 0),
             "repository_url": metrics.get("Repository_URL", ""),
             "license": metrics.get("Licenses", ""),
+            "growth_pct": metrics.get("growth_pct", 0),
         })
 
     if pypi_data:
