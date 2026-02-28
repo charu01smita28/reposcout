@@ -122,6 +122,7 @@ def get_health_metrics(package_name: str) -> dict | None:
                 "open_issues": r.get("open_issues", 0),
                 "Repository_URL": r.get("github_repo", ""),
                 "Description": r.get("description", ""),
+                "growth_pct": r.get("growth_pct", 0),
             })
 
     # Layer 1: supplement with historical data
