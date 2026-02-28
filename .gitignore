@@ -7,11 +7,7 @@ CLAUDE.md
 claude.md
 
 # Data files
-data/reposcout.db
-data/qdrant_data/
-data/pypi_cache/
-data/*.csv
-data/*.tar.gz
+data/
 
 # Environment
 .env
