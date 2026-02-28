@@ -3,7 +3,13 @@
 import { useEffect, useState } from "react"
 import { ArrowUpRight } from "lucide-react"
 import { Card, CardContent } from "@/components/ui/card"
-import { statCards } from "@/lib/sample-data"
+
+interface StatCard {
+  label: string
+  value: string | number
+  type: "number" | "text" | "growth"
+  sub?: string
+}
 
 function AnimatedNumber({ target }: { target: number }) {
   const [current, setCurrent] = useState(0)
@@ -32,11 +38,15 @@ function AnimatedNumber({ target }: { target: number }) {
   )
 }
 
-export function StatsBanner() {
+interface StatsBannerProps {
+  stats: StatCard[]
+}
+
+export function StatsBanner({ stats }: StatsBannerProps) {
   return (
     <section className="px-6 pb-6">
       <div className="grid grid-cols-2 lg:grid-cols-4 gap-4 max-w-5xl mx-auto">
-        {statCards.map((stat) => (
+        {stats.map((stat) => (
           <Card
             key={stat.label}
             className={`py-4 shadow-sm ${stat.type === "growth" ? "bg-[#ecfdf5]" : "bg-card"}`}
