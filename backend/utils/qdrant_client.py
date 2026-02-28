@@ -1,7 +1,8 @@
 from qdrant_client import QdrantClient
 from qdrant_client.models import Distance, VectorParams, PointStruct
 from mistralai import Mistral
-from backend.config import QDRANT_PATH, QDRANT_COLLECTION, EMBEDDING_DIM, MISTRAL_API_KEY
+from backend.config import QDRANT_PATH, QDRANT_URL, QDRANT_API_KEY, QDRANT_COLLECTION, EMBEDDING_DIM, MISTRAL_API_KEY
+from backend.models import SemanticSearchResult
 
 _client: QdrantClient | None = None
 _mistral: Mistral | None = None
@@ -10,7 +11,10 @@ _mistral: Mistral | None = None
 def get_client() -> QdrantClient:
     global _client
     if _client is None:
-        _client = QdrantClient(path=QDRANT_PATH)
+        if QDRANT_URL:
+            _client = QdrantClient(url=QDRANT_URL, api_key=QDRANT_API_KEY or None)
+        else:
+            _client = QdrantClient(path=QDRANT_PATH)
     return _client
 
 
@@ -44,6 +48,9 @@ def get_embeddings_batch(texts: list[str]) -> list[list[float]]:
 
 
 def semantic_search_packages(query: str, limit: int = 20, score_threshold: float = 0.3) -> list[dict]:
+    """Search Qdrant for packages matching the query.
+    Returns lean results (QdrantPayload fields + similarity_score).
+    For full data, caller should enrich from DuckDB by package name."""
     client = get_client()
     query_embedding = get_embedding(query)
     results = client.search(
@@ -53,13 +60,15 @@ def semantic_search_packages(query: str, limit: int = 20, score_threshold: float
         score_threshold=score_threshold,
     )
     return [
-        {
-            "name": hit.payload.get("name", ""),
-            "description": hit.payload.get("description", ""),
-            "stars": hit.payload.get("stars", 0),
-            "dependents_count": hit.payload.get("dependents_count", 0),
-            "score": hit.score,
-        }
+        SemanticSearchResult(
+            name=hit.payload.get("name", ""),
+            summary=hit.payload.get("summary", ""),
+            stars=hit.payload.get("stars", 0),
+            dependent_count=hit.payload.get("dependent_count", 0),
+            growth_pct=hit.payload.get("growth_pct", 0),
+            version=hit.payload.get("version", ""),
+            similarity_score=hit.score,
+        ).model_dump()
         for hit in results
     ]
 

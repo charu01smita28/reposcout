@@ -8,7 +8,9 @@ load_dotenv()
 BASE_DIR = Path(__file__).resolve().parent.parent
 DATA_DIR = BASE_DIR / "data"
 DUCKDB_PATH = str(DATA_DIR / "reposcout.db")
-QDRANT_PATH = str(DATA_DIR / "qdrant_data")
+QDRANT_PATH = str(DATA_DIR / "qdrant_data")  # local fallback
+QDRANT_URL = os.getenv("QDRANT_URL", "")      # Qdrant Cloud URL
+QDRANT_API_KEY = os.getenv("QDRANT_API_KEY", "")  # Qdrant Cloud API key
 PYPI_CACHE_DIR = DATA_DIR / "pypi_cache"
 
 # --- API Keys ---
