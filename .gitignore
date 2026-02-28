@@ -1,0 +1,40 @@
+# Internal docs / specs
+reposcout-project-spec.md
+
+# Claude
+.claude/
+CLAUDE.md
+claude.md
+
+# Data files
+data/reposcout.db
+data/qdrant_data/
+data/pypi_cache/
+data/*.csv
+data/*.tar.gz
+
+# Environment
+.env
+
+# Python
+__pycache__/
+*.pyc
+*.pyo
+.venv/
+venv/
+env/
+
+# Next.js frontend
+frontend/node_modules/
+frontend/.next/
+frontend/out/
+
+# IDE
+.vscode/
+.idea/
+*.swp
+*.swo
+
+# OS
+.DS_Store
+Thumbs.db
