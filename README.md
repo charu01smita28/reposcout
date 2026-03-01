@@ -6,16 +6,6 @@ An **agentic RAG system** that queries **85K+ Python packages**, **2M+ dependenc
 
 RepoScout is not a chatbot with package opinions. It's an autonomous research agent that retrieves structured data from a pre-indexed PyPI ecosystem snapshot, augments it with live metadata and source code, and synthesizes actionable recommendations grounded in real adoption metrics.
 
-### Search Interface
-![RepoScout Homepage](docs/Screenshot1.png)
-
-### Stats, Comparison Table & Charts
-![Stats and Comparison](docs/Screenshot2.png)
-![Charts and Download Trends](docs/Screenshot4.png)
-
-### AI-Powered Analysis
-![AI Analysis](docs/Screenshot3.png)
-
 ---
 
 ## Agentic RAG Architecture
@@ -504,6 +494,25 @@ RepoScout stands on the shoulders of incredible open-source projects and platfor
 | [**pypistats.org**](https://pypistats.org/) | Community-run PyPI download statistics API | 6 months of daily download data powering trend charts |
 | [**Next.js**](https://nextjs.org/) | React framework for production web apps | Frontend with SSE streaming, real-time UI updates |
 | [**FastAPI**](https://fastapi.tiangolo.com/) | Modern Python web framework for building APIs | Backend serving SSE streams, REST endpoints, and orchestrating the agent pipeline |
+
+## Future Roadmap
+
+- **Expand dataset coverage** — Integrate historical dependency graph data (Libraries.io) to add version-level dependency resolution, historical maintainer activity, and repository-level metadata for 4M+ projects. This would significantly deepen the intelligence layer beyond the current 85K-package snapshot.
+- **Automated data refresh pipeline** — Build a scheduled job (cron / GitHub Actions) that periodically re-fetches PyPI metadata, download statistics, and dependency counts so RepoScout always reflects the latest state of the Python ecosystem — not a point-in-time snapshot.
+- **Evaluation and benchmarks** — Develop a test suite with ground-truth queries and expected package rankings to measure retrieval precision, agent tool-calling accuracy, and synthesis quality. Add automated regression testing to catch quality degradation as the system evolves.
+
+---
+
+## Demo
+
+### Stats, Comparison Table & Charts
+![Stats and Comparison](docs/Screenshot2.png)
+![Charts and Download Trends](docs/Screenshot4.png)
+
+### AI-Powered Analysis
+![AI Analysis](docs/Screenshot3.png)
+
+---
 
 ## License
 
