@@ -92,3 +92,15 @@ export async function comparePackages(packages: string[]) {
   if (!res.ok) throw new Error("Comparison failed")
   return res.json()
 }
+
+export interface DownloadDataPoint {
+  package_name: string
+  month: string
+  downloads: number
+}
+
+export async function getDownloadTrends(packageNames: string[]): Promise<DownloadDataPoint[]> {
+  const res = await fetch(`${API_BASE}/api/downloads?packages=${packageNames.join(",")}`)
+  if (!res.ok) throw new Error("Download trends failed")
+  return res.json()
+}

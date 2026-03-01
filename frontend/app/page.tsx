@@ -12,10 +12,13 @@ import { PackageDeepDive } from "@/components/stack-trace/package-deep-dive"
 import { AISynthesis } from "@/components/stack-trace/ai-synthesis"
 import { LoadingPipeline } from "@/components/stack-trace/loading-states"
 import { FollowUpInput } from "@/components/stack-trace/follow-up-input"
+import { DeepComparison } from "@/components/stack-trace/deep-comparison"
 import {
   searchAgent,
+  getDownloadTrends,
   type SearchResponse,
   type PackageStats,
+  type DownloadDataPoint,
 } from "@/lib/api"
 import { type PackageData } from "@/lib/sample-data"
 
@@ -24,7 +27,7 @@ type AppState = "idle" | "loading" | "results" | "error"
 export default function RepoScoutPage() {
   const [query, setQuery] = useState("")
   const [followUpQuery, setFollowUpQuery] = useState("")
-  const [activeMode, setActiveMode] = useState("solve")
+  const [activeMode, setActiveMode] = useState("auto")
   const [appState, setAppState] = useState<AppState>("idle")
   const [errorMsg, setErrorMsg] = useState("")
   const resultsRef = useRef<HTMLDivElement>(null)
@@ -37,14 +40,40 @@ export default function RepoScoutPage() {
   const [packageStats, setPackageStats] = useState<PackageStats[]>([])
   const [searchResults, setSearchResults] = useState<Record<string, unknown> | null>(null)
   const [selectedPackage, setSelectedPackage] = useState<string | null>(null)
+  const [lineChartData, setLineChartData] = useState<Record<string, string | number>[]>([])
+  const [lineChartPackages, setLineChartPackages] = useState<string[]>([])
+
+  const fetchDownloadTrends = (pkgNames: string[]) => {
+    const names = pkgNames.slice(0, 5)
+    if (names.length === 0) return
+    getDownloadTrends(names)
+      .then((data) => {
+        if (!data || data.length === 0) return
+        // Pivot flat data → recharts wide format: [{ month, pkg1: n, pkg2: n }, ...]
+        const months = [...new Set(data.map((d) => d.month))].sort()
+        const pivoted = months.map((m) => {
+          const row: Record<string, string | number> = { month: m }
+          for (const name of names) {
+            const point = data.find((d) => d.month === m && d.package_name === name)
+            if (point) row[name] = point.downloads
+          }
+          return row
+        })
+        setLineChartData(pivoted)
+        setLineChartPackages(names)
+      })
+      .catch(() => {})
+  }
 
   const handleSearch = useCallback(async () => {
     if (!query.trim()) return
     setAppState("loading")
     setErrorMsg("")
+    setLineChartData([])
+    setLineChartPackages([])
 
     try {
-      const result = await searchAgent(query)
+      const result = await searchAgent(query, activeMode)
       setAnalysisText(result.analysis)
       setToolCalls(result.tool_calls)
       setDetectedMode(result.mode)
@@ -64,19 +93,24 @@ export default function RepoScoutPage() {
       setTimeout(() => {
         resultsRef.current?.scrollIntoView({ behavior: "smooth" })
       }, 100)
+
+      // Non-blocking: fetch download trends in background
+      fetchDownloadTrends(pkgs.map((p) => p.name))
     } catch (err) {
       setErrorMsg(err instanceof Error ? err.message : "Something went wrong")
       setAppState("error")
     }
-  }, [query])
+  }, [query, activeMode])
 
   const handleSuggestionSelect = (suggestion: string) => {
     setQuery(suggestion)
+    setLineChartData([])
+    setLineChartPackages([])
     // Trigger search after state update
     setTimeout(async () => {
       setAppState("loading")
       try {
-        const result = await searchAgent(suggestion)
+        const result = await searchAgent(suggestion, activeMode)
         setAnalysisText(result.analysis)
         setToolCalls(result.tool_calls)
         setDetectedMode(result.mode)
@@ -91,6 +125,7 @@ export default function RepoScoutPage() {
         setTimeout(() => {
           resultsRef.current?.scrollIntoView({ behavior: "smooth" })
         }, 100)
+        fetchDownloadTrends(pkgs.map((p) => p.name))
       } catch (err) {
         setErrorMsg(err instanceof Error ? err.message : "Something went wrong")
         setAppState("error")
@@ -139,12 +174,23 @@ export default function RepoScoutPage() {
         : (p.growth_pct || 0) < -5
           ? "down"
           : "neutral",
+    summary: p.summary || "",
   }))
 
   // Bar chart data
   const barData = tableData
     .map((p) => ({ name: p.name, dependents: p.dependents }))
     .sort((a, b) => b.dependents - a.dependents)
+
+  // Download totals for deep comparison (latest month per package)
+  const downloadTotals: Record<string, number> = {}
+  if (lineChartData.length > 0 && lineChartPackages.length > 0) {
+    const lastRow = lineChartData[lineChartData.length - 1]
+    for (const name of lineChartPackages) {
+      const val = lastRow[name]
+      if (typeof val === "number" && val > 0) downloadTotals[name] = val
+    }
+  }
 
   // Stats banner data
   const statCards = packageStats.length > 0
@@ -161,6 +207,12 @@ export default function RepoScoutPage() {
         },
         {
           label: "Most Popular",
+          value: [...packageStats].sort((a, b) => (b.stars || 0) - (a.stars || 0))[0]?.name || "",
+          sub: `${([...packageStats].sort((a, b) => (b.stars || 0) - (a.stars || 0))[0]?.stars || 0).toLocaleString()} stars`,
+          type: "text" as const,
+        },
+        {
+          label: "Most Depended On",
           value: [...packageStats].sort((a, b) => (b.dependents_count || 0) - (a.dependents_count || 0))[0]?.name || "",
           sub: `${([...packageStats].sort((a, b) => (b.dependents_count || 0) - (a.dependents_count || 0))[0]?.dependents_count || 0).toLocaleString()} dependents`,
           type: "text" as const,
@@ -237,10 +289,23 @@ export default function RepoScoutPage() {
         summary: `Agent ran ${iterations} iteration(s) with ${toolCalls.length} tool call(s) in ${detectedMode} mode.`,
         recommendation: analysisText,
         dataSources: [
-          "DuckDB — 85K+ packages (stars, dependents, growth trends)",
-          "Qdrant Cloud — semantic search (80K vectors, Mistral Embed)",
-          "PyPI API — live metadata (versions, releases, dependencies)",
-          "GitHub — source code analysis (Devstral)",
+          // Static infra sources
+          ...(toolCalls.some((t) => t.tool === "search_packages")
+            ? [{ label: "Qdrant Cloud — semantic search (80K vectors, Mistral Embed)" }]
+            : []),
+          ...(toolCalls.some((t) => t.tool === "get_package_stats" || t.tool === "compare_packages")
+            ? [{ label: "DuckDB — 85K+ packages (stars, dependents, growth trends)" }]
+            : []),
+          // Per-package links: PyPI + GitHub
+          ...packageStats.flatMap((p) => {
+            const ghUrl = p.repository_url
+              ? (p.repository_url.startsWith("http") ? p.repository_url : `https://github.com/${p.repository_url}`)
+              : ""
+            return [
+              { label: `PyPI: ${p.name}`, url: `https://pypi.org/project/${p.name}/` },
+              ...(ghUrl ? [{ label: `GitHub: ${p.name}`, url: ghUrl }] : []),
+            ]
+          }),
         ],
         followUps: [
           { text: `Compare the top 3 packages from this search`, borderColor: "border-l-[#6366f1]" },
@@ -265,7 +330,7 @@ export default function RepoScoutPage() {
         />
 
         {appState === "idle" && (
-          <SuggestionCards onSelect={handleSuggestionSelect} />
+          <SuggestionCards onSelect={handleSuggestionSelect} activeMode={activeMode} />
         )}
 
         {appState === "loading" && <LoadingPipeline />}
@@ -282,13 +347,26 @@ export default function RepoScoutPage() {
           <div ref={resultsRef} className="flex flex-col">
             {statCards.length > 0 && <StatsBanner stats={statCards} />}
             {tableData.length > 0 && (
-              <ComparisonTable
-                data={tableData}
-                onSelectPackage={handleSelectPackageFromTable}
-                selectedPackage={selectedPackage}
+              detectedMode === "compare" && packageStats.length >= 2 ? (
+                <DeepComparison
+                  packages={packageStats}
+                  downloadTotals={Object.keys(downloadTotals).length > 0 ? downloadTotals : undefined}
+                />
+              ) : (
+                <ComparisonTable
+                  data={tableData}
+                  onSelectPackage={handleSelectPackageFromTable}
+                  selectedPackage={selectedPackage}
+                />
+              )
+            )}
+            {barData.length > 0 && (
+              <ChartsSection
+                barData={barData}
+                lineData={lineChartData.length > 0 ? lineChartData : undefined}
+                packageNames={lineChartPackages.length > 0 ? lineChartPackages : undefined}
               />
             )}
-            {barData.length > 0 && <ChartsSection barData={barData} />}
             {depMapData && (
               <DependencyMap
                 data={depMapData}

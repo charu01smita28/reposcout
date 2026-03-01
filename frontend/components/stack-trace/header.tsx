@@ -16,7 +16,7 @@ export function Header() {
         variant="secondary"
         className="text-muted-foreground text-xs font-normal bg-muted"
       >
-        Powered by Mistral AI + Libraries.io
+        Powered by Mistral AI
       </Badge>
     </header>
   )

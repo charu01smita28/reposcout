@@ -1,10 +1,10 @@
 """
-Layer 2 — Fresh Ecosystem Snapshot (BigQuery/deps.dev)
+Setup — Fresh Ecosystem Snapshot (BigQuery/deps.dev)
 
-Run this first. Creates a standalone reposcout.db with fresh data.
+Creates reposcout.db with fresh package data.
 
 Usage:
-    python scripts/setup_layer2.py
+    python scripts/setup_layer.py
 """
 
 import duckdb

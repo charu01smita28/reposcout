@@ -11,10 +11,15 @@ import {
 import ReactMarkdown from "react-markdown"
 import remarkGfm from "remark-gfm"
 
+interface DataSource {
+  label: string
+  url?: string
+}
+
 interface SynthesisData {
   summary: string
   recommendation: string
-  dataSources: string[]
+  dataSources: DataSource[]
   followUps: { text: string; borderColor: string }[]
 }
 
@@ -59,16 +64,30 @@ export function AISynthesis({ data, onFollowUp }: AISynthesisProps) {
               Data Sources
             </CollapsibleTrigger>
             <CollapsibleContent className="pt-2">
-              <ul className="flex flex-col gap-1.5 pl-5 list-disc">
+              <ol className="flex flex-col gap-1.5 pl-5 list-decimal">
                 {data.dataSources.map((source) => (
                   <li
-                    key={source}
+                    key={source.label}
                     className="text-xs text-muted-foreground"
                   >
-                    {source}
+                    {source.url ? (
+                      <span>
+                        {source.label}{" "}
+                        <a
+                          href={source.url}
+                          target="_blank"
+                          rel="noopener noreferrer"
+                          className="text-[#6366f1] hover:underline break-all"
+                        >
+                          {source.url}
+                        </a>
+                      </span>
+                    ) : (
+                      source.label
+                    )}
                   </li>
                 ))}
-              </ul>
+              </ol>
             </CollapsibleContent>
           </Collapsible>
 

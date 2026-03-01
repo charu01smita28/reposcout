@@ -19,8 +19,6 @@ def synthesize_response(query: str, data: dict, mode: str = "explore") -> dict:
         prompt = _build_explore_prompt(query, data)
     elif mode == "compare":
         prompt = _build_compare_prompt(query, data)
-    elif mode == "health_check":
-        prompt = _build_health_prompt(query, data)
     else:
         prompt = _build_explore_prompt(query, data)
 

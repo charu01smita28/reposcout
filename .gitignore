@@ -3,8 +3,10 @@ reposcout-project-spec.md
 
 # Claude
 .claude/
-CLAUDE.md
-claude.md
+**/CLAUDE.md
+**/claude.md
+**/MEMORY.md
+**/memory.md
 
 # Data files
 data/

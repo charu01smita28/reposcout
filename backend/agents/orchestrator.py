@@ -109,6 +109,8 @@ SYSTEM_PROMPT = """You are RepoScout, an open source intelligence engine with ac
 
 You help developers make data-driven decisions about open source packages. You have real data — not opinions.
 
+CRITICAL FORMAT RULE — NEVER include tables of raw stats (stars, dependents, health scores, release dates, etc.) in your response. The UI already shows all package data in an interactive comparison card. Repeating it wastes space. Instead, go straight to ANALYSIS and RECOMMENDATIONS. You may reference specific numbers inline (e.g. "Django leads with 10,816 dependents") but NEVER format them as a table.
+
 Your capabilities via tools:
 - search_packages: Semantic search across 400K+ Python package descriptions
 - get_package_stats: Detailed stats for any package (dependents, stars, health score)
@@ -118,11 +120,12 @@ Your capabilities via tools:
 
 IMPORTANT RULES:
 1. Always use tools to get real data before answering. Never guess or use training data for package stats.
-2. Cite specific numbers: dependents count, stars, health scores.
+2. Cite specific numbers inline but NEVER as a data summary table — the UI handles that.
 3. When comparing, use actual adoption data (dependents), not just stars.
 4. If a package isn't found in the database, say so honestly.
-5. Structure your response clearly with sections for data, analysis, and recommendation.
-6. When recommending a package, explain WHY with data points."""
+5. Structure your response with: Key Insights → Use Cases → Recommendations.
+6. When recommending a package, explain WHY with data points.
+7. NEVER wrap package names in backticks. Write package names as plain text (e.g. "pypdf" not "`pypdf`"). Backticks should only be used for actual code snippets like pip install commands."""
 
 
 def get_client() -> Mistral:
@@ -169,9 +172,21 @@ def classify_query(query: str) -> str:
                         "You are a query classifier for a Python package intelligence tool. "
                         "Classify the user's query into exactly one category.\n\n"
                         "Categories:\n"
-                        "- explore: searching for packages, discovering tools, finding what's popular or trending\n"
-                        "- compare: comparing two or more specific packages head-to-head\n"
-                        "- health_check: checking if a specific package is safe, maintained, or reliable\n\n"
+                        "- explore: ANY query about discovering, evaluating, or learning about packages. "
+                        "This includes searching by topic, asking about a concept, asking if a package is good, "
+                        "finding alternatives, or anything that is NOT an explicit side-by-side comparison. "
+                        "This is the default and most common category.\n"
+                        "- compare: ONLY when the user explicitly asks to compare two or more NAMED packages "
+                        "head-to-head (e.g. 'FastAPI vs Django', 'compare requests and httpx')\n\n"
+                        "Examples:\n"
+                        "- 'best Python ORMs' → explore\n"
+                        "- 'How do Python projects handle rate limiting?' → explore\n"
+                        "- 'best libraries for rate limiting' → explore\n"
+                        "- 'is celery well maintained?' → explore\n"
+                        "- 'should I use SQLAlchemy?' → explore\n"
+                        "- 'what are the best testing frameworks' → explore\n"
+                        "- 'FastAPI vs Django vs Flask' → compare\n"
+                        "- 'compare requests and httpx' → compare\n\n"
                         "Respond with ONLY the category name, nothing else."
                     ),
                 },
@@ -180,7 +195,7 @@ def classify_query(query: str) -> str:
             max_tokens=10,
         )
         mode = response.choices[0].message.content.strip().lower()
-        if mode in ("explore", "compare", "health_check"):
+        if mode in ("explore", "compare"):
             return mode
     except Exception:
         pass
@@ -195,10 +210,10 @@ async def run_agent(user_query: str, mode: str = "auto") -> dict:
         mode = classify_query(user_query)
 
     mode_context = ""
-    if mode == "compare":
+    if mode == "explore":
+        mode_context = "\nThe user is exploring packages. After using search_packages, you MUST also call get_package_stats on the top 5 most relevant/popular packages to get detailed stats. Do not skip this step."
+    elif mode == "compare":
         mode_context = "\nThe user wants to compare packages. Use the compare_packages tool and provide a detailed side-by-side analysis."
-    elif mode == "health_check":
-        mode_context = "\nThe user wants a health check on a specific package. Use get_package_stats and provide a detailed risk assessment with alternatives."
 
     messages = [
         {"role": "system", "content": SYSTEM_PROMPT + mode_context},

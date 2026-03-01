@@ -45,7 +45,7 @@ interface StatsBannerProps {
 export function StatsBanner({ stats }: StatsBannerProps) {
   return (
     <section className="px-6 pb-6">
-      <div className="grid grid-cols-2 lg:grid-cols-4 gap-4 max-w-5xl mx-auto">
+      <div className="grid grid-cols-2 lg:grid-cols-5 gap-4 max-w-5xl mx-auto">
         {stats.map((stat) => (
           <Card
             key={stat.label}

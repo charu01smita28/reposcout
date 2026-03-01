@@ -3,29 +3,32 @@
 import {
   Search,
   GitCompare,
-  Shield,
+  Package,
   TrendingUp,
 } from "lucide-react"
 import { Card, CardContent } from "@/components/ui/card"
 import { suggestedQueries } from "@/lib/sample-data"
 
-const iconMap = {
+const iconMap: Record<string, typeof Search> = {
   Search,
   GitCompare,
-  Shield,
+  Package,
   TrendingUp,
 }
 
 interface SuggestionCardsProps {
   onSelect: (query: string) => void
+  activeMode?: string
 }
 
-export function SuggestionCards({ onSelect }: SuggestionCardsProps) {
+export function SuggestionCards({ onSelect, activeMode = "auto" }: SuggestionCardsProps) {
+  const cards = suggestedQueries[activeMode] || suggestedQueries.auto
+
   return (
     <section className="px-6 pb-8">
       <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4 max-w-5xl mx-auto">
-        {suggestedQueries.map((item) => {
-          const Icon = iconMap[item.icon]
+        {cards.map((item) => {
+          const Icon = iconMap[item.icon] || Search
           return (
             <Card
               key={item.query}
