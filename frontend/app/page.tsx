@@ -1,6 +1,7 @@
 "use client"
 
 import { useState, useRef, useCallback } from "react"
+import { Check, Loader2 } from "lucide-react"
 import { Header } from "@/components/stack-trace/header"
 import { SearchHero } from "@/components/stack-trace/search-hero"
 import { SuggestionCards } from "@/components/stack-trace/suggestion-cards"
@@ -10,15 +11,14 @@ import { ChartsSection } from "@/components/stack-trace/charts-section"
 import { DependencyMap } from "@/components/stack-trace/dependency-map"
 import { PackageDeepDive } from "@/components/stack-trace/package-deep-dive"
 import { AISynthesis } from "@/components/stack-trace/ai-synthesis"
-import { LoadingPipeline } from "@/components/stack-trace/loading-states"
 import { FollowUpInput } from "@/components/stack-trace/follow-up-input"
 import { DeepComparison } from "@/components/stack-trace/deep-comparison"
+import { Card, CardContent } from "@/components/ui/card"
+import { Skeleton } from "@/components/ui/skeleton"
 import {
-  searchAgent,
-  getDownloadTrends,
+  searchAgentStream,
   type SearchResponse,
   type PackageStats,
-  type DownloadDataPoint,
 } from "@/lib/api"
 import { type PackageData } from "@/lib/sample-data"
 
@@ -42,101 +42,91 @@ export default function RepoScoutPage() {
   const [selectedPackage, setSelectedPackage] = useState<string | null>(null)
   const [lineChartData, setLineChartData] = useState<Record<string, string | number>[]>([])
   const [lineChartPackages, setLineChartPackages] = useState<string[]>([])
+  const [loadingSteps, setLoadingSteps] = useState<string[]>([])
+  const streamControllerRef = useRef<AbortController | null>(null)
 
-  const fetchDownloadTrends = (pkgNames: string[]) => {
-    const names = pkgNames.slice(0, 5)
-    if (names.length === 0) return
-    getDownloadTrends(names)
-      .then((data) => {
+  const startStreamingSearch = useCallback((searchQuery: string, searchMode: string) => {
+    // Abort any in-flight stream
+    streamControllerRef.current?.abort()
+
+    setAppState("loading")
+    setErrorMsg("")
+    setAnalysisText("")
+    setLineChartData([])
+    setLineChartPackages([])
+    setLoadingSteps([])
+
+    const controller = searchAgentStream(
+      searchQuery,
+      searchMode,
+      // onMetadata — cards render immediately
+      (data) => {
+        setToolCalls(data.tool_calls)
+        setDetectedMode(data.mode)
+        setIterations(data.iterations)
+        setPackageStats(data.packages || [])
+        setSearchResults(data.search)
+
+        const pkgs = data.packages || []
+        if (pkgs.length > 0) {
+          setSelectedPackage(pkgs[0].name)
+        }
+
+        setAppState("results")
+        setTimeout(() => {
+          resultsRef.current?.scrollIntoView({ behavior: "smooth" })
+        }, 100)
+      },
+      // onToken — analysis text streams in progressively
+      (token) => {
+        setAnalysisText((prev) => prev + token)
+      },
+      // onDone
+      () => {},
+      // onError
+      (err) => {
+        setErrorMsg(err.message || "Something went wrong")
+        setAppState("error")
+      },
+      // onProgress — real-time loading hints
+      (step) => {
+        setLoadingSteps((prev) => [...prev, step])
+      },
+      // onDownloads — arrives via SSE, no separate HTTP call
+      (data) => {
         if (!data || data.length === 0) return
-        // Pivot flat data → recharts wide format: [{ month, pkg1: n, pkg2: n }, ...]
-        const months = [...new Set(data.map((d) => d.month))].sort()
+        const names = [...new Set(data.map((d: { package_name: string }) => d.package_name))]
+        const months = [...new Set(data.map((d: { month: string }) => d.month))].sort()
         const pivoted = months.map((m) => {
           const row: Record<string, string | number> = { month: m }
           for (const name of names) {
-            const point = data.find((d) => d.month === m && d.package_name === name)
+            const point = data.find((d: { month: string; package_name: string; downloads: number }) => d.month === m && d.package_name === name)
             if (point) row[name] = point.downloads
           }
           return row
         })
         setLineChartData(pivoted)
         setLineChartPackages(names)
-      })
-      .catch(() => {})
-  }
+      },
+    )
 
-  const handleSearch = useCallback(async () => {
+    streamControllerRef.current = controller
+  }, [])
+
+  const handleSearch = useCallback(() => {
     if (!query.trim()) return
-    setAppState("loading")
-    setErrorMsg("")
-    setLineChartData([])
-    setLineChartPackages([])
-
-    try {
-      const result = await searchAgent(query, activeMode)
-      setAnalysisText(result.analysis)
-      setToolCalls(result.tool_calls)
-      setDetectedMode(result.mode)
-      setIterations(result.iterations)
-
-      // Use structured data from backend
-      setPackageStats(result.packages || [])
-      setSearchResults(result.search)
-
-      // Select first package by default
-      const pkgs = result.packages || []
-      if (pkgs.length > 0) {
-        setSelectedPackage(pkgs[0].name)
-      }
-
-      setAppState("results")
-      setTimeout(() => {
-        resultsRef.current?.scrollIntoView({ behavior: "smooth" })
-      }, 100)
-
-      // Non-blocking: fetch download trends in background
-      fetchDownloadTrends(pkgs.map((p) => p.name))
-    } catch (err) {
-      setErrorMsg(err instanceof Error ? err.message : "Something went wrong")
-      setAppState("error")
-    }
-  }, [query, activeMode])
+    startStreamingSearch(query, activeMode)
+  }, [query, activeMode, startStreamingSearch])
 
   const handleSuggestionSelect = (suggestion: string) => {
     setQuery(suggestion)
-    setLineChartData([])
-    setLineChartPackages([])
-    // Trigger search after state update
-    setTimeout(async () => {
-      setAppState("loading")
-      try {
-        const result = await searchAgent(suggestion, activeMode)
-        setAnalysisText(result.analysis)
-        setToolCalls(result.tool_calls)
-        setDetectedMode(result.mode)
-        setIterations(result.iterations)
-        setPackageStats(result.packages || [])
-        setSearchResults(result.search)
-        const pkgs = result.packages || []
-        if (pkgs.length > 0) {
-          setSelectedPackage(pkgs[0].name)
-        }
-        setAppState("results")
-        setTimeout(() => {
-          resultsRef.current?.scrollIntoView({ behavior: "smooth" })
-        }, 100)
-        fetchDownloadTrends(pkgs.map((p) => p.name))
-      } catch (err) {
-        setErrorMsg(err instanceof Error ? err.message : "Something went wrong")
-        setAppState("error")
-      }
-    }, 200)
+    startStreamingSearch(suggestion, activeMode)
   }
 
   const handleFollowUp = (text: string) => {
     setQuery(text)
     setFollowUpQuery("")
-    setTimeout(() => handleSearch(), 100)
+    startStreamingSearch(text, activeMode)
   }
 
   const handleSelectPackageFromTable = (pkg: PackageData) => {
@@ -278,8 +268,10 @@ export default function RepoScoutPage() {
             status: (selectedPkg.dependents_count || 0) > 100 ? "green" as const : (selectedPkg.dependents_count || 0) > 10 ? "amber" as const : "red" as const,
           },
         ],
-        codeSnippet: `pip install ${selectedPkg.name}`,
-        codeSource: `PyPI: ${selectedPkg.name} v${selectedPkg.latest_version || ""}`,
+        codeSnippet: selectedPkg.code_snippet || `pip install ${selectedPkg.name}`,
+        codeSource: selectedPkg.code_snippet
+          ? (selectedPkg.code_source || "README")
+          : `PyPI: ${selectedPkg.name} v${selectedPkg.latest_version || ""}`,
       }
     : null
 
@@ -289,13 +281,9 @@ export default function RepoScoutPage() {
         summary: `Agent ran ${iterations} iteration(s) with ${toolCalls.length} tool call(s) in ${detectedMode} mode.`,
         recommendation: analysisText,
         dataSources: [
-          // Static infra sources
-          ...(toolCalls.some((t) => t.tool === "search_packages")
-            ? [{ label: "Qdrant Cloud — semantic search (80K vectors, Mistral Embed)" }]
-            : []),
-          ...(toolCalls.some((t) => t.tool === "get_package_stats" || t.tool === "compare_packages")
-            ? [{ label: "DuckDB — 85K+ packages (stars, dependents, growth trends)" }]
-            : []),
+          // Static infra sources — always shown
+          { label: "Qdrant Cloud — semantic search (80K vectors, Mistral Embed)" },
+          { label: "DuckDB — 85K+ packages (stars, dependents, growth trends)" },
           // Per-package links: PyPI + GitHub
           ...packageStats.flatMap((p) => {
             const ghUrl = p.repository_url
@@ -317,7 +305,17 @@ export default function RepoScoutPage() {
 
   return (
     <div className="min-h-screen flex flex-col bg-background">
-      <Header />
+      <Header onLogoClick={() => {
+        streamControllerRef.current?.abort()
+        setAppState("idle")
+        setQuery("")
+        setAnalysisText("")
+        setPackageStats([])
+        setLineChartData([])
+        setLineChartPackages([])
+        setLoadingSteps([])
+        window.scrollTo({ top: 0, behavior: "smooth" })
+      }} />
 
       <main className="flex-1 flex flex-col">
         <SearchHero
@@ -333,7 +331,76 @@ export default function RepoScoutPage() {
           <SuggestionCards onSelect={handleSuggestionSelect} activeMode={activeMode} />
         )}
 
-        {appState === "loading" && <LoadingPipeline />}
+        {appState === "loading" && (
+          <section className="px-6 pb-6">
+            <div className="max-w-5xl mx-auto flex flex-col gap-6">
+              {/* Real-time pipeline steps — show last 4 max */}
+              <Card className="shadow-sm py-4">
+                <CardContent className="flex flex-col gap-3">
+                  {loadingSteps.length === 0 ? (
+                    <div className="flex items-center gap-3">
+                      <Loader2 className="size-5 text-[#6366f1] animate-spin" />
+                      <span className="text-sm text-foreground font-medium">
+                        Connecting to RepoScout agent...
+                      </span>
+                    </div>
+                  ) : (
+                    <>
+                      {loadingSteps.length > 4 && (
+                        <span className="text-xs text-muted-foreground">
+                          {loadingSteps.length - 4} earlier step{loadingSteps.length - 4 > 1 ? "s" : ""} completed
+                        </span>
+                      )}
+                      {loadingSteps.slice(-4).map((step, i) => {
+                        const isLast = i === Math.min(loadingSteps.length, 4) - 1
+                        return (
+                          <div key={step + i} className="flex items-center gap-3">
+                            {isLast ? (
+                              <Loader2 className="size-5 text-[#6366f1] animate-spin" />
+                            ) : (
+                              <div className="flex items-center justify-center size-5 rounded-full bg-[#10b981]">
+                                <Check className="size-3 text-[#ffffff]" />
+                              </div>
+                            )}
+                            <span
+                              className={`text-sm ${
+                                isLast ? "text-foreground font-medium" : "text-muted-foreground"
+                              }`}
+                            >
+                              {step}
+                            </span>
+                          </div>
+                        )
+                      })}
+                    </>
+                  )}
+                </CardContent>
+              </Card>
+
+              {/* Skeleton cards */}
+              <div className="grid grid-cols-2 lg:grid-cols-4 gap-4">
+                {Array.from({ length: 4 }).map((_, i) => (
+                  <Card key={i} className="shadow-sm py-4">
+                    <CardContent className="flex flex-col gap-2">
+                      <Skeleton className="h-3 w-24" />
+                      <Skeleton className="h-7 w-16" />
+                    </CardContent>
+                  </Card>
+                ))}
+              </div>
+
+              {/* Skeleton table */}
+              <Card className="shadow-sm py-4">
+                <CardContent className="flex flex-col gap-3">
+                  <Skeleton className="h-4 w-48" />
+                  {Array.from({ length: 5 }).map((_, i) => (
+                    <Skeleton key={i} className="h-10 w-full" />
+                  ))}
+                </CardContent>
+              </Card>
+            </div>
+          </section>
+        )}
 
         {appState === "error" && (
           <div className="px-6 pb-6 max-w-5xl mx-auto">

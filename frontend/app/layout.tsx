@@ -13,7 +13,7 @@ const geistMono = Geist_Mono({
 
 export const metadata: Metadata = {
   title: 'RepoScout - The Open Source Intelligence Engine',
-  description: 'Query 2.6M packages and 235M dependency relationships. Real data, not opinions.',
+  description: 'Query 85K+ Python packages and 2M+ dependency signals. Real data, not opinions.',
   generator: 'v0.app',
   icons: {
     icon: [

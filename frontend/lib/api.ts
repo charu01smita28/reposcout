@@ -33,6 +33,8 @@ export interface PackageStats {
   score_color: string
   days_since_last_release: number
   growth_pct?: number
+  code_snippet?: string
+  code_source?: string
 }
 
 export interface QuickSearchResult {
@@ -97,6 +99,91 @@ export interface DownloadDataPoint {
   package_name: string
   month: string
   downloads: number
+}
+
+export function searchAgentStream(
+  query: string,
+  mode: string,
+  onMetadata: (data: Omit<SearchResponse, "analysis">) => void,
+  onToken: (token: string) => void,
+  onDone: () => void,
+  onError: (err: Error) => void,
+  onProgress?: (step: string) => void,
+  onDownloads?: (data: DownloadDataPoint[]) => void,
+): AbortController {
+  const controller = new AbortController()
+
+  ;(async () => {
+    try {
+      const res = await fetch(`${API_BASE}/api/search/stream`, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ query, mode }),
+        signal: controller.signal,
+      })
+      if (!res.ok) throw new Error(`Search failed: ${res.statusText}`)
+      if (!res.body) throw new Error("No response body")
+
+      const reader = res.body.getReader()
+      const decoder = new TextDecoder()
+      let buffer = ""
+
+      while (true) {
+        const { done, value } = await reader.read()
+        if (done) break
+
+        buffer += decoder.decode(value, { stream: true })
+
+        // Parse SSE events from buffer
+        const lines = buffer.split("\n")
+        buffer = lines.pop() || "" // Keep incomplete line in buffer
+
+        for (const line of lines) {
+          const trimmed = line.trim()
+          if (!trimmed.startsWith("data: ")) continue
+
+          const jsonStr = trimmed.slice(6)
+          try {
+            const event = JSON.parse(jsonStr)
+            if (event.type === "progress") {
+              onProgress?.(event.step)
+            } else if (event.type === "metadata") {
+              onMetadata({
+                tool_calls: event.tool_calls,
+                iterations: event.iterations,
+                mode: event.mode,
+                packages: event.packages || [],
+                search: event.search,
+              })
+            } else if (event.type === "downloads") {
+              onDownloads?.(event.data)
+            } else if (event.type === "token") {
+              onToken(event.content)
+            } else if (event.type === "done") {
+              onDone()
+            }
+          } catch {
+            // Skip malformed JSON lines
+          }
+        }
+      }
+
+      // Process any remaining buffer
+      if (buffer.trim().startsWith("data: ")) {
+        try {
+          const event = JSON.parse(buffer.trim().slice(6))
+          if (event.type === "done") onDone()
+        } catch {
+          // ignore
+        }
+      }
+    } catch (err) {
+      if (err instanceof DOMException && err.name === "AbortError") return
+      onError(err instanceof Error ? err : new Error(String(err)))
+    }
+  })()
+
+  return controller
 }
 
 export async function getDownloadTrends(packageNames: string[]): Promise<DownloadDataPoint[]> {

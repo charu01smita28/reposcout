@@ -1,10 +1,83 @@
+import asyncio
+import json
+import logging
+from pathlib import Path
+
+logging.basicConfig(level=logging.INFO, format="%(name)s | %(message)s")
+
 from fastapi import FastAPI, HTTPException
 from fastapi.middleware.cors import CORSMiddleware
+from fastapi.responses import StreamingResponse
 from backend.models import SearchRequest
-from backend.agents.orchestrator import run_agent
+from backend.agents.orchestrator import run_agent, run_agent_stream
 from backend.agents.package_intel import get_package_stats, compare_packages_intel, search_packages
 from backend.utils.duckdb_client import get_dataset_stats, get_dependents_count, get_dependency_tree, get_reverse_dependencies, get_download_history
 from backend.utils.scoring import get_score_label, get_score_color
+
+# --- SSE Stream Cache ---
+STREAM_CACHE_DIR = Path(__file__).resolve().parent.parent / "data" / "stream_cache"
+STREAM_CACHE_DIR.mkdir(parents=True, exist_ok=True)
+
+# Replay delays per event type (seconds) — feels natural, not instant
+_REPLAY_DELAYS = {
+    "progress": 0.8,
+    "metadata": 0.1,
+    "token": 0.0,    # tokens flush via sleep(0)
+    "downloads": 0.0,
+    "done": 0.0,
+}
+
+
+def _cache_key(query: str, mode: str) -> str:
+    return query.strip().lower().replace(" ", "_")[:80] + f"__{mode}"
+
+
+_STOP_WORDS = {"a", "an", "the", "is", "are", "for", "in", "of", "to", "and", "or", "what", "how", "do", "does", "vs", "best", "top"}
+
+
+def _query_words(query: str) -> set[str]:
+    return {w for w in query.strip().lower().split() if w not in _STOP_WORDS and len(w) > 1}
+
+
+def _read_cache(key: str) -> list[dict] | None:
+    # Exact match first
+    path = STREAM_CACHE_DIR / f"{key}.json"
+    if path.exists():
+        try:
+            return json.loads(path.read_text())
+        except (json.JSONDecodeError, OSError):
+            pass
+
+    # Fuzzy match: 4+ significant words overlap → cache hit
+    query_part, _, mode_part = key.rpartition("__")
+    if not query_part:
+        return None
+    input_words = _query_words(query_part.replace("_", " "))
+    if len(input_words) < 3:
+        return None
+
+    best_match = None
+    best_overlap = 0
+    for cached_file in STREAM_CACHE_DIR.glob(f"*__{mode_part}.json"):
+        cached_query = cached_file.stem.rpartition("__")[0].replace("_", " ")
+        cached_words = _query_words(cached_query)
+        overlap = len(input_words & cached_words)
+        if overlap > best_overlap:
+            best_overlap = overlap
+            best_match = cached_file
+
+    if best_overlap >= 4 and best_match:
+        try:
+            return json.loads(best_match.read_text())
+        except (json.JSONDecodeError, OSError):
+            pass
+
+    return None
+
+
+def _write_cache(key: str, events: list[dict]):
+    path = STREAM_CACHE_DIR / f"{key}.json"
+    path.write_text(json.dumps(events, default=str))
 
 app = FastAPI(title="RepoScout API", version="1.0.0")
 
@@ -87,6 +160,55 @@ async def health_check(package_name: str):
         "risks": risks,
         "risk_level": "high" if score < 40 else "moderate" if score < 70 else "low",
     }
+
+
+@app.post("/api/search/stream")
+async def search_stream(req: SearchRequest):
+    if not req.query.strip():
+        raise HTTPException(status_code=400, detail="Query cannot be empty")
+
+    key = _cache_key(req.query, req.mode)
+    cached = _read_cache(key)
+
+    if cached:
+        # Replay cached events with realistic delays
+        async def replay_generator():
+            for event in cached:
+                delay = _REPLAY_DELAYS.get(event.get("type", ""), 0)
+                if delay > 0:
+                    await asyncio.sleep(delay)
+                yield f"data: {json.dumps(event, default=str)}\n\n"
+                if event.get("type") == "token":
+                    await asyncio.sleep(0)  # flush each token chunk
+
+        return StreamingResponse(
+            replay_generator(),
+            media_type="text/event-stream",
+            headers={
+                "Cache-Control": "no-cache",
+                "Connection": "keep-alive",
+                "X-Accel-Buffering": "no",
+            },
+        )
+
+    # Live pipeline — collect events and cache them
+    async def event_generator():
+        events: list[dict] = []
+        async for chunk in run_agent_stream(req.query, mode=req.mode):
+            events.append(chunk)
+            yield f"data: {json.dumps(chunk, default=str)}\n\n"
+        # Save to cache after stream completes
+        _write_cache(key, events)
+
+    return StreamingResponse(
+        event_generator(),
+        media_type="text/event-stream",
+        headers={
+            "Cache-Control": "no-cache",
+            "Connection": "keep-alive",
+            "X-Accel-Buffering": "no",
+        },
+    )
 
 
 @app.get("/api/search/quick")

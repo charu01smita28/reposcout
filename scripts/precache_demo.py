@@ -1,99 +1,104 @@
 """
-Pre-cache demo queries so they return instantly during the demo.
+Pre-cache demo queries by hitting the live SSE endpoint.
+Run with the backend already running on port 8000:
 
-Usage:
-    python -m scripts.precache_demo
+    python scripts/precache_demo.py          # all queries
+    python scripts/precache_demo.py --new    # only new extras
 """
 
-import asyncio
-import json
+import httpx
 import time
-from pathlib import Path
-
-BASE_DIR = Path(__file__).resolve().parent.parent
-CACHE_DIR = BASE_DIR / "data" / "demo_cache"
-
 import sys
-sys.path.insert(0, str(BASE_DIR))
 
-from backend.agents.orchestrator import run_agent
-from backend.agents.package_intel import get_package_stats, compare_packages_intel
+BASE = "http://localhost:8000"
 
-DEMO_QUERIES = [
-    {
-        "query": "How do Python projects handle rate limiting?",
-        "mode": "explore",
-    },
-    {
-        "query": "Compare FastAPI vs Django vs Flask",
-        "mode": "compare",
-    },
-    {
-        "query": "Is python-jose safe to depend on?",
-        "mode": "health_check",
-    },
-    {
-        "query": "What's the fastest growing Python ORM?",
-        "mode": "explore",
-    },
+# All unique (query, mode) pairs from suggestedQueries in sample-data.ts
+QUERIES = [
+    # auto mode
+    ("How do Python projects handle rate limiting?", "auto"),
+    ("Compare FastAPI vs Django vs Flask", "auto"),
+    ("What's the fastest growing Python ORM?", "auto"),
+    ("Best Python libraries for web scraping", "auto"),
+    # explore mode
+    ("Best Python libraries for web scraping", "explore"),
+    ("Best Python libraries for async processing", "explore"),
+    ("Best Python libraries for file handling", "explore"),
+    ("Best Python libraries for machine learning", "explore"),
+    # compare mode
+    ("Compare FastAPI vs Django vs Flask", "compare"),
+    ("Compare requests vs httpx vs aiohttp", "compare"),
+    ("Compare SQLAlchemy vs Django ORM vs Peewee", "compare"),
+    ("Compare pytest vs unittest vs nose2", "compare"),
 ]
 
-# Pre-fetch PyPI metadata for packages likely to appear in demo
-DEMO_PACKAGES = [
-    "fastapi", "django", "flask", "requests", "sqlalchemy",
-    "ratelimit", "slowapi", "flask-limiter",
-    "python-jose", "pyjwt", "authlib",
-    "tortoise-orm", "peewee", "pony", "sqlmodel",
-    "numpy", "pandas", "httpx", "uvicorn", "pydantic",
+# Extra queries to cache (not in suggestion cards but good for demo)
+EXTRA_QUERIES = [
+    ("What are the fastest growing AI libraries in Python?", "auto"),
+    ("Top trending Python libraries for building AI agents", "auto"),
 ]
 
 
-async def precache_packages():
-    print("[...] Pre-caching PyPI metadata for demo packages...")
-    for pkg_name in DEMO_PACKAGES:
-        try:
-            stats = await get_package_stats(pkg_name)
-            print(f"  [OK] {pkg_name}: score={stats.get('reposcout_score', '?')}")
-        except Exception as e:
-            print(f"  [ERR] {pkg_name}: {e}")
+def run_query(query: str, mode: str, index: int, total: int):
+    print(f"\n[{index}/{total}] {mode}: {query}")
+    print("  Streaming...", end="", flush=True)
+
+    start = time.time()
+    event_count = 0
+
+    with httpx.Client(timeout=180.0) as client:
+        with client.stream(
+            "POST",
+            f"{BASE}/api/search/stream",
+            json={"query": query, "mode": mode},
+        ) as resp:
+            if resp.status_code != 200:
+                print(f"  FAILED ({resp.status_code})")
+                return False
+
+            for line in resp.iter_lines():
+                if line.startswith("data: "):
+                    event_count += 1
+                    if event_count % 20 == 0:
+                        print(".", end="", flush=True)
+
+    elapsed = time.time() - start
+    print(f" done ({event_count} events, {elapsed:.1f}s)")
+    return True
 
 
-async def precache_queries():
-    CACHE_DIR.mkdir(parents=True, exist_ok=True)
+def main():
+    # Check backend is running
+    try:
+        r = httpx.get(f"{BASE}/api/stats", timeout=5)
+        r.raise_for_status()
+    except Exception:
+        print("ERROR: Backend not running on port 8000.")
+        print("Start it first: uvicorn backend.main:app --reload --port 8000")
+        sys.exit(1)
 
-    print("\n[...] Pre-caching demo queries...")
-    for demo in DEMO_QUERIES:
-        query = demo["query"]
-        mode = demo["mode"]
-        cache_key = query.lower().replace(" ", "_").replace("?", "")[:60]
-        cache_path = CACHE_DIR / f"{cache_key}.json"
+    if "--new" in sys.argv:
+        queries = EXTRA_QUERIES
+        print(f"Pre-caching {len(queries)} NEW queries only...")
+    else:
+        queries = QUERIES + EXTRA_QUERIES
+        print(f"Pre-caching {len(queries)} demo queries...")
 
-        print(f"\n  Query: \"{query}\" (mode={mode})")
-        t0 = time.time()
+    print(f"Cache dir: data/stream_cache/\n")
 
-        try:
-            result = await run_agent(query, mode=mode)
-            elapsed = time.time() - t0
+    total = len(queries)
+    failed = []
+    for i, (query, mode) in enumerate(queries, 1):
+        ok = run_query(query, mode, i, total)
+        if not ok:
+            failed.append((query, mode))
 
-            cache_data = {
-                "query": query,
-                "mode": mode,
-                "result": result,
-                "cached_at": time.time(),
-                "generation_time_seconds": elapsed,
-            }
-            cache_path.write_text(json.dumps(cache_data, indent=2, default=str))
-            print(f"  [OK] Cached in {elapsed:.1f}s → {cache_path.name}")
-        except Exception as e:
-            print(f"  [ERR] Failed: {e}")
-
-
-async def main():
-    await precache_packages()
-    await precache_queries()
-    print("\n[DONE] Demo cache ready!")
-    print(f"  Cache dir: {CACHE_DIR}")
+    print(f"\n{'='*50}")
+    print(f"Done! {total - len(failed)}/{total} cached successfully.")
+    if failed:
+        print(f"Failed ({len(failed)}):")
+        for q, m in failed:
+            print(f"  - [{m}] {q}")
 
 
 if __name__ == "__main__":
-    asyncio.run(main())
+    main()
