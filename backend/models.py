@@ -74,7 +74,7 @@ class PackageFull(BaseModel):
 
 class SearchRequest(BaseModel):
     query: str
-    mode: str = "explore"  # "explore" | "compare" | "health_check"
+    mode: str = "explore"  # "explore" | "compare"
 
 
 class HealthCheckResponse(BaseModel):

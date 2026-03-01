@@ -1,25 +1,23 @@
-export const suggestedQueries = [
-  {
-    icon: "Search" as const,
-    query: "How do Python projects handle rate limiting?",
-    borderColor: "border-l-[#6366f1]",
-  },
-  {
-    icon: "GitCompare" as const,
-    query: "Compare FastAPI vs Django vs Flask",
-    borderColor: "border-l-[#10b981]",
-  },
-  {
-    icon: "Shield" as const,
-    query: "Is python-jose safe to depend on?",
-    borderColor: "border-l-[#f59e0b]",
-  },
-  {
-    icon: "TrendingUp" as const,
-    query: "What's the fastest growing Python ORM?",
-    borderColor: "border-l-[#8b5cf6]",
-  },
-]
+export const suggestedQueries: Record<string, { icon: string; query: string; borderColor: string }[]> = {
+  auto: [
+    { icon: "Search", query: "How do Python projects handle rate limiting?", borderColor: "border-l-[#6366f1]" },
+    { icon: "GitCompare", query: "Compare FastAPI vs Django vs Flask", borderColor: "border-l-[#10b981]" },
+    { icon: "TrendingUp", query: "What's the fastest growing Python ORM?", borderColor: "border-l-[#f59e0b]" },
+    { icon: "Package", query: "Best Python libraries for web scraping", borderColor: "border-l-[#8b5cf6]" },
+  ],
+  explore: [
+    { icon: "Search", query: "Best Python libraries for web scraping", borderColor: "border-l-[#6366f1]" },
+    { icon: "Search", query: "Top Python libraries for data validation", borderColor: "border-l-[#10b981]" },
+    { icon: "Search", query: "Best Python libraries for task queues", borderColor: "border-l-[#f59e0b]" },
+    { icon: "Search", query: "Top Python libraries for PDF parsing", borderColor: "border-l-[#8b5cf6]" },
+  ],
+  compare: [
+    { icon: "GitCompare", query: "Compare FastAPI vs Django vs Flask", borderColor: "border-l-[#6366f1]" },
+    { icon: "GitCompare", query: "Compare requests vs httpx vs aiohttp", borderColor: "border-l-[#10b981]" },
+    { icon: "GitCompare", query: "Compare SQLAlchemy vs Django ORM vs Peewee", borderColor: "border-l-[#f59e0b]" },
+    { icon: "GitCompare", query: "Compare pytest vs unittest vs nose2", borderColor: "border-l-[#8b5cf6]" },
+  ],
+}
 
 export const statCards = [
   { label: "Packages Found", value: 47, type: "number" as const },
@@ -243,3 +241,204 @@ export const loadingSteps = [
   "Fetching source code...",
   "Synthesizing results...",
 ]
+
+// Compare mode data for "Compare FastAPI vs Django vs Flask"
+export interface FrameworkCompareData {
+  name: string
+  logo: string
+  tagline: string
+  category: string
+  stars: number
+  forks: number
+  contributors: number
+  weeklyDownloads: number
+  latestVersion: string
+  releaseDate: string
+  pythonVersions: string
+  license: string
+  health: number
+  // Performance
+  requestsPerSec: number
+  latencyMs: number
+  memoryMb: number
+  // Features (boolean or rating 1-5)
+  asyncSupport: "native" | "partial" | "limited"
+  typeHints: "native" | "partial" | "limited"
+  autoDocumentation: boolean
+  builtInORM: boolean
+  adminPanel: boolean
+  websockets: "native" | "extension" | "none"
+  testing: "built-in" | "extension"
+  // Ecosystem
+  extensions: number
+  tutorialsCount: number
+  stackOverflowQuestions: number
+  // Use cases
+  bestFor: string[]
+  notIdealFor: string[]
+  // Trend
+  trend: number
+  trendDirection: "up" | "down" | "neutral"
+  adoptionTrend: { month: string; value: number }[]
+}
+
+export const frameworkCompareData: FrameworkCompareData[] = [
+  {
+    name: "FastAPI",
+    logo: "F",
+    tagline: "Modern, fast, web framework for building APIs",
+    category: "Async API Framework",
+    stars: 78500,
+    forks: 6200,
+    contributors: 650,
+    weeklyDownloads: 12500000,
+    latestVersion: "0.115.0",
+    releaseDate: "2 weeks ago",
+    pythonVersions: "3.8+",
+    license: "MIT",
+    health: 97,
+    requestsPerSec: 45200,
+    latencyMs: 2.1,
+    memoryMb: 48,
+    asyncSupport: "native",
+    typeHints: "native",
+    autoDocumentation: true,
+    builtInORM: false,
+    adminPanel: false,
+    websockets: "native",
+    testing: "built-in",
+    extensions: 320,
+    tutorialsCount: 8500,
+    stackOverflowQuestions: 24800,
+    bestFor: ["APIs", "Microservices", "ML/AI backends", "Real-time apps"],
+    notIdealFor: ["Full-stack apps", "Content sites", "Beginners"],
+    trend: 42,
+    trendDirection: "up",
+    adoptionTrend: [
+      { month: "Mar", value: 8200000 },
+      { month: "Jun", value: 9800000 },
+      { month: "Sep", value: 11200000 },
+      { month: "Dec", value: 12500000 },
+    ],
+  },
+  {
+    name: "Django",
+    logo: "D",
+    tagline: "The web framework for perfectionists with deadlines",
+    category: "Full-Stack Framework",
+    stars: 81200,
+    forks: 31500,
+    contributors: 2450,
+    weeklyDownloads: 9800000,
+    latestVersion: "5.1.2",
+    releaseDate: "3 weeks ago",
+    pythonVersions: "3.10+",
+    license: "BSD-3",
+    health: 95,
+    requestsPerSec: 12800,
+    latencyMs: 8.4,
+    memoryMb: 125,
+    asyncSupport: "partial",
+    typeHints: "partial",
+    autoDocumentation: false,
+    builtInORM: true,
+    adminPanel: true,
+    websockets: "extension",
+    testing: "built-in",
+    extensions: 4800,
+    tutorialsCount: 45000,
+    stackOverflowQuestions: 312000,
+    bestFor: ["Full-stack apps", "Content sites", "E-commerce", "Enterprise"],
+    notIdealFor: ["Simple APIs", "Microservices", "Serverless"],
+    trend: 5,
+    trendDirection: "neutral",
+    adoptionTrend: [
+      { month: "Mar", value: 9200000 },
+      { month: "Jun", value: 9400000 },
+      { month: "Sep", value: 9600000 },
+      { month: "Dec", value: 9800000 },
+    ],
+  },
+  {
+    name: "Flask",
+    logo: "Fl",
+    tagline: "A lightweight WSGI micro web framework",
+    category: "Micro Framework",
+    stars: 68900,
+    forks: 16200,
+    contributors: 720,
+    weeklyDownloads: 28500000,
+    latestVersion: "3.1.0",
+    releaseDate: "1 month ago",
+    pythonVersions: "3.8+",
+    license: "BSD-3",
+    health: 88,
+    requestsPerSec: 18500,
+    latencyMs: 5.2,
+    memoryMb: 32,
+    asyncSupport: "limited",
+    typeHints: "partial",
+    autoDocumentation: false,
+    builtInORM: false,
+    adminPanel: false,
+    websockets: "extension",
+    testing: "extension",
+    extensions: 2100,
+    tutorialsCount: 52000,
+    stackOverflowQuestions: 98500,
+    bestFor: ["Small apps", "Prototypes", "Learning", "Flexibility"],
+    notIdealFor: ["Large apps", "Real-time", "High performance APIs"],
+    trend: 3,
+    trendDirection: "down",
+    adoptionTrend: [
+      { month: "Mar", value: 29500000 },
+      { month: "Jun", value: 29200000 },
+      { month: "Sep", value: 28800000 },
+      { month: "Dec", value: 28500000 },
+    ],
+  },
+]
+
+export const compareStatCards = [
+  { label: "Frameworks Analyzed", value: 3, type: "number" as const },
+  { label: "Combined Stars", value: 228600, type: "number" as const },
+  {
+    label: "Most Downloaded",
+    value: "Flask",
+    sub: "28.5M weekly",
+    type: "text" as const,
+  },
+  {
+    label: "Fastest Growing",
+    value: "FastAPI",
+    sub: "42% YoY",
+    type: "growth" as const,
+  },
+]
+
+export const compareAiSynthesis = {
+  summary:
+    "Based on analysis of 3 major Python web frameworks across performance benchmarks, ecosystem health, and real-world adoption patterns:",
+  recommendation:
+    "**FastAPI** is the clear winner for new API-first projects requiring high performance and modern Python features (async/await, type hints). Choose **Django** for full-stack applications needing batteries-included features like admin panel, ORM, and authentication. **Flask** remains excellent for learning, prototyping, or when you need maximum flexibility, but its sync-first design shows declining adoption for new projects.",
+  dataSources: [
+    "PyPI download statistics (last 12 months)",
+    "GitHub repository metrics",
+    "TechEmpower Web Framework Benchmarks",
+    "Stack Overflow Developer Survey 2024",
+  ],
+  followUps: [
+    {
+      text: "Show me FastAPI vs Flask performance benchmarks",
+      borderColor: "border-l-[#6366f1]",
+    },
+    {
+      text: "Which has better async support for WebSockets?",
+      borderColor: "border-l-[#10b981]",
+    },
+    {
+      text: "Compare learning curves for beginners",
+      borderColor: "border-l-[#f59e0b]",
+    },
+  ],
+}

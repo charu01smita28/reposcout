@@ -14,9 +14,9 @@ interface SearchHeroProps {
 }
 
 const modes = [
-  { id: "solve", label: "How does the world solve X?" },
+  { id: "auto", label: "How does the world solve X?" },
   { id: "compare", label: "Compare packages" },
-  { id: "health", label: "Health check" },
+  { id: "explore", label: "Best packages for domain" },
 ]
 
 export function SearchHero({

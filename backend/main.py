@@ -3,7 +3,7 @@ from fastapi.middleware.cors import CORSMiddleware
 from backend.models import SearchRequest
 from backend.agents.orchestrator import run_agent
 from backend.agents.package_intel import get_package_stats, compare_packages_intel, search_packages
-from backend.utils.duckdb_client import get_dataset_stats, get_dependents_count, get_dependency_tree, get_reverse_dependencies
+from backend.utils.duckdb_client import get_dataset_stats, get_dependents_count, get_dependency_tree, get_reverse_dependencies, get_download_history
 from backend.utils.scoring import get_score_label, get_score_color
 
 app = FastAPI(title="RepoScout API", version="1.0.0")
@@ -106,6 +106,14 @@ async def dependents(package_name: str):
         "dependents_count": count,
         "top_dependents": rev_deps,
     }
+
+
+@app.get("/api/downloads")
+async def downloads(packages: str):
+    pkg_list = [p.strip() for p in packages.split(",") if p.strip()][:10]
+    if not pkg_list:
+        raise HTTPException(status_code=400, detail="Provide at least 1 package name")
+    return get_download_history(pkg_list)
 
 
 if __name__ == "__main__":

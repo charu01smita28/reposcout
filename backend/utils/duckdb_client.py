@@ -306,3 +306,30 @@ def get_top_packages_for_names(names: list[str]) -> pd.DataFrame:
             return df
 
     return pd.DataFrame()
+
+
+# ---------------------------------------------------------------------------
+# Download history (daily → monthly aggregation)
+# ---------------------------------------------------------------------------
+
+def get_download_history(package_names: list[str]) -> list[dict]:
+    if not package_names or not has_table("download_stats"):
+        return []
+    conn = get_conn()
+    placeholders = ",".join(["LOWER(?)"] * len(package_names))
+    df = conn.execute(
+        f"""
+        SELECT
+            package_name,
+            STRFTIME(DATE_TRUNC('month', CAST(month AS DATE)), '%Y-%m') AS month,
+            SUM(downloads) AS downloads
+        FROM download_stats
+        WHERE LOWER(package_name) IN ({placeholders})
+        GROUP BY package_name, DATE_TRUNC('month', CAST(month AS DATE))
+        ORDER BY month, package_name
+        """,
+        [n.lower() for n in package_names],
+    ).fetchdf()
+    if df.empty:
+        return []
+    return df.to_dict(orient="records")

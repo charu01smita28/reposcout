@@ -1,10 +1,10 @@
 """
-Layer 2 — Fresh Ecosystem Snapshot (BigQuery/deps.dev)
+Setup — Fresh Ecosystem Snapshot (BigQuery/deps.dev)
 
-Run this first. Creates a standalone reposcout.db with fresh data.
+Creates reposcout.db with fresh package data.
 
 Usage:
-    python scripts/setup_layer2.py
+    python scripts/setup_layer.py
 """
 
 import duckdb
@@ -55,52 +55,15 @@ if has_2025:
     """)
     count = db.sql("SELECT COUNT(*) FROM dependents_2025").fetchone()[0]
     print(f"[OK] dependents_2025: {count:,} rows")
-else:
-    print("[INFO] No dependents_2025.csv found — growth trends will be skipped")
 
 # ============ JOINED VIEW ============
+# Unified 'packages' table joining:
+#   fresh_dependents (dep counts) + bridge (PyPI→GitHub) + github_projects (stars/forks/issues)
+#   + optional YoY growth calculation from dependents_2025
+# Uses ROW_NUMBER() to deduplicate multiple GitHub repos per package (picks highest stars)
 
-growth_cols = ""
-growth_join = ""
-if has_2025:
-    growth_cols = """,
-        old.dependent_count AS dependent_count_2025,
-        ROUND((d.dependent_count - COALESCE(old.dependent_count, 0)) * 100.0
-              / GREATEST(COALESCE(old.dependent_count, 1), 1), 1) AS growth_pct"""
-    growth_join = "LEFT JOIN dependents_2025 old ON old.package_name = d.package_name"
+...  # SQL join + growth calculation removed for public repository
 
-print("[...] Creating unified 'packages' table...")
-db.sql(f"""
-    CREATE TABLE packages AS
-    WITH bridge_dedup AS (
-        SELECT DISTINCT package_name, github_repo
-        FROM bridge
-    ),
-    ranked AS (
-        SELECT
-            d.package_name,
-            d.dependent_count,
-            b.github_repo,
-            g.StarsCount AS stars,
-            g.ForksCount AS forks,
-            g.OpenIssuesCount AS open_issues,
-            g.Description AS description,
-            g.Homepage AS homepage
-            {growth_cols},
-            ROW_NUMBER() OVER (
-                PARTITION BY d.package_name
-                ORDER BY g.StarsCount DESC NULLS LAST
-            ) AS rn
-        FROM fresh_dependents d
-        LEFT JOIN bridge_dedup b ON b.package_name = d.package_name
-        LEFT JOIN github_projects g ON g.Name = b.github_repo
-        {growth_join}
-    )
-    SELECT *  EXCLUDE (rn)
-    FROM ranked
-    WHERE rn = 1
-    ORDER BY dependent_count DESC
-""")
 # ============ DROP INTERMEDIATE TABLES ============
 
 print("[...] Dropping intermediate tables (only 'packages' matters)...")
