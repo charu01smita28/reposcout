@@ -119,8 +119,15 @@ export default function RepoScoutPage() {
   }, [query, activeMode, startStreamingSearch])
 
   const handleSuggestionSelect = (suggestion: string) => {
+    streamControllerRef.current?.abort()
+    setAppState("idle")
     setQuery(suggestion)
-    startStreamingSearch(suggestion, activeMode)
+    setAnalysisText("")
+    setPackageStats([])
+    setLineChartData([])
+    setLineChartPackages([])
+    setLoadingSteps([])
+    window.scrollTo({ top: 0, behavior: "smooth" })
   }
 
   const handleFollowUp = (text: string) => {

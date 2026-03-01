@@ -2,7 +2,7 @@ export const suggestedQueries: Record<string, { icon: string; query: string; bor
   auto: [
     { icon: "Search", query: "How do Python projects handle rate limiting?", borderColor: "border-l-[#6366f1]" },
     { icon: "GitCompare", query: "Compare FastAPI vs Django vs Flask", borderColor: "border-l-[#10b981]" },
-    { icon: "TrendingUp", query: "What's the fastest growing Python ORM?", borderColor: "border-l-[#f59e0b]" },
+    { icon: "TrendingUp", query: "Which Python packages handle PDF parsing?", borderColor: "border-l-[#f59e0b]" },
     { icon: "Package", query: "Best Python libraries for web scraping", borderColor: "border-l-[#8b5cf6]" },
   ],
   explore: [

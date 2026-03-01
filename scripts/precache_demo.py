@@ -17,7 +17,7 @@ QUERIES = [
     # auto mode
     ("How do Python projects handle rate limiting?", "auto"),
     ("Compare FastAPI vs Django vs Flask", "auto"),
-    ("What's the fastest growing Python ORM?", "auto"),
+    ("Which Python packages handle PDF parsing?", "auto"),
     ("Best Python libraries for web scraping", "auto"),
     # explore mode
     ("Best Python libraries for web scraping", "explore"),

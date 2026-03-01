@@ -14,7 +14,7 @@ const geistMono = Geist_Mono({
 export const metadata: Metadata = {
   title: 'RepoScout - The Open Source Intelligence Engine',
   description: 'Query 85K+ Python packages and 2M+ dependency signals. Real data, not opinions.',
-  generator: 'v0.app',
+  generator: 'RepoScout',
   icons: {
     icon: [
       {
