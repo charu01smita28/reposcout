@@ -33,7 +33,7 @@ export function FollowUpInput({ value, onChange, onSend }: FollowUpInputProps) {
           </Button>
         </div>
         <p className="text-xs text-muted-foreground text-center">
-          Querying 2.6M packages &bull; 235M dependencies &bull; Powered by Mistral AI
+          85K+ Python packages &bull; 2M+ dependency signals &bull; Powered by Mistral AI
         </p>
       </div>
     </div>

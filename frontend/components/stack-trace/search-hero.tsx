@@ -34,7 +34,7 @@ export function SearchHero({
           The Open Source Intelligence Engine
         </h1>
         <p className="text-muted-foreground text-balance">
-          Query 2.6M packages and 235M dependency relationships. Real data, not
+          Query 85K+ Python packages and 2M+ dependency signals. Real data, not
           opinions.
         </p>
       </div>

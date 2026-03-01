@@ -1,14 +1,54 @@
+import re
+
 from backend.utils.duckdb_client import (
     get_package,
     get_dependents_count,
     get_health_metrics,
+    get_code_snippet,
     compare_packages as db_compare,
     search_packages_by_keyword,
     get_top_packages_for_names,
+    get_conn,
+    has_table,
 )
 from backend.utils.qdrant_client import semantic_search_packages
 from backend.utils.pypi_client import get_pypi_metadata, days_since_release
 from backend.utils.scoring import compute_reposcout_score, get_score_label, get_score_color
+
+
+_GROWTH_PATTERN = re.compile(
+    r"(grow|trend|rising|fastest|hottest|explod|surge|boom|popular|emerging)",
+    re.IGNORECASE,
+)
+
+
+def _get_top_growth_packages(limit: int = 20) -> list[dict]:
+    """Get top packages by growth_pct from DuckDB, filtering out junk."""
+    if not has_table("packages"):
+        return []
+    conn = get_conn()
+    # Require real packages: decent deps AND some GitHub presence
+    # Sort by growth * log(deps) to balance explosive growth with real adoption
+    rows = conn.execute("""
+        SELECT package_name, description, stars, dependent_count, growth_pct
+        FROM packages
+        WHERE growth_pct > 50
+          AND dependent_count >= 50
+          AND (COALESCE(stars, 0) > 0 OR dependent_count >= 500)
+        ORDER BY growth_pct * LN(dependent_count + 1) DESC
+        LIMIT ?
+    """, [limit]).fetchall()
+    return [
+        {
+            "name": r[0],
+            "description": r[1] or "",
+            "stars": r[2] or 0,
+            "dependents_count": r[3] or 0,
+            "growth_pct": r[4] or 0,
+            "score": 0,
+        }
+        for r in rows
+    ]
 
 
 def search_packages(query: str, limit: int = 20) -> dict:
@@ -21,9 +61,26 @@ def search_packages(query: str, limit: int = 20) -> dict:
     # Fallback / supplement with keyword search in DuckDB
     keyword_results = search_packages_by_keyword(query, limit=limit)
 
-    # Merge: semantic results first, then keyword results not already present
+    # If query is about growth/trending, supplement with top growth packages
+    growth_results = []
+    if _GROWTH_PATTERN.search(query):
+        growth_results = _get_top_growth_packages(limit=limit)
+
+    # For growth queries: growth results first, then semantic
+    # For normal queries: semantic first, then keyword
+    is_growth_query = bool(growth_results)
+
     seen = set()
     merged = []
+
+    if is_growth_query:
+        # Growth results first — they're the actual answer
+        for r in growth_results:
+            name = r["name"].lower()
+            if name not in seen:
+                seen.add(name)
+                merged.append(r)
+
     for r in semantic_results:
         name = r["name"].lower()
         if name not in seen:
@@ -41,11 +98,25 @@ def search_packages(query: str, limit: int = 20) -> dict:
                 "score": 0,
             })
 
-    return {
+    result = {
         "query": query,
         "total_found": len(merged),
         "packages": merged[:limit],
     }
+
+    # For growth queries, add explicit top-growth hint so the LLM picks the right packages
+    if is_growth_query:
+        top_growth = sorted(
+            [p for p in merged if p.get("growth_pct", 0)],
+            key=lambda p: p.get("growth_pct", 0),
+            reverse=True,
+        )[:7]
+        result["top_by_growth"] = [
+            {"name": p["name"], "growth_pct": p.get("growth_pct", 0)}
+            for p in top_growth
+        ]
+
+    return result
 
 
 async def get_package_stats(package_name: str) -> dict:
@@ -104,6 +175,12 @@ async def get_package_stats(package_name: str) -> dict:
     stats["score_label"] = get_score_label(score)
     stats["score_color"] = get_score_color(score)
     stats["days_since_last_release"] = days
+
+    # Code snippet from README
+    snippet = get_code_snippet(package_name)
+    if snippet:
+        stats["code_snippet"] = snippet["code"]
+        stats["code_source"] = snippet["source"]
 
     return stats
 

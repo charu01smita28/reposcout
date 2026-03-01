@@ -1,3 +1,5 @@
+import re
+
 import duckdb
 import pandas as pd
 from backend.config import DUCKDB_PATH
@@ -333,3 +335,96 @@ def get_download_history(package_names: list[str]) -> list[dict]:
     if df.empty:
         return []
     return df.to_dict(orient="records")
+
+
+# ---------------------------------------------------------------------------
+# Code snippet extraction from README
+# ---------------------------------------------------------------------------
+
+# Matches ```python or ```py tagged blocks (case-insensitive)
+_PYTHON_FENCED_RE = re.compile(
+    r"```(?:python|py)\s*\n(.*?)```",
+    re.DOTALL | re.IGNORECASE,
+)
+
+# Matches any fenced code block (fallback)
+_ANY_FENCED_RE = re.compile(
+    r"```(\w*)\s*\n(.*?)```",
+    re.DOTALL,
+)
+
+_INDENTED_RE = re.compile(
+    r"(?:^|\n)((?:(?:    |\t).+\n?){2,})",
+)
+
+_PIP_ONLY_RE = re.compile(r"^\s*(\$\s*)?(pip\s+install\s+\S+|python\s+-m\s+pip\s+install\s+\S+)\s*$")
+
+# Language tags that indicate non-Python code content
+_SKIP_LANGS = {"html", "xml", "css", "json", "yaml", "yml", "toml", "ini", "console", "bash", "sh", "shell", "sql"}
+
+
+def _is_trivial_install(code: str) -> bool:
+    """Return True if every non-blank line is just a pip install command."""
+    lines = [l for l in code.strip().splitlines() if l.strip()]
+    return all(_PIP_ONLY_RE.match(l) for l in lines) if lines else True
+
+
+_CODE_SIGNALS_RE = re.compile(
+    r"(^import |^from .+ import |^def |^class |^>>> |[=()\[\]{}]|^\w+\.)",
+    re.MULTILINE,
+)
+
+
+def _looks_like_code(code: str, strict: bool = False) -> bool:
+    """Return True if the text looks like actual code, not prose or HTML."""
+    first_line = code.split("\n")[0].strip()
+    if first_line.startswith("<") and ">" in first_line:
+        return False  # HTML
+    # Skip markdown prose (bold, links, etc.)
+    if "**" in first_line or first_line.startswith("[") or first_line.startswith("*"):
+        return False
+    # In strict mode (for indented blocks), require Python-like syntax
+    if strict and not _CODE_SIGNALS_RE.search(code):
+        return False
+    return True
+
+
+def get_code_snippet(package_name: str) -> dict | None:
+    """Extract the first meaningful code block from a package's README."""
+    if not has_table("pypi_metadata"):
+        return None
+
+    conn = get_conn()
+    row = conn.execute(
+        "SELECT description FROM pypi_metadata WHERE LOWER(name) = LOWER(?) LIMIT 1",
+        [package_name],
+    ).fetchone()
+
+    if not row or not row[0]:
+        return None
+
+    readme = row[0]
+
+    # Priority 1: explicitly Python-tagged fenced blocks
+    for m in _PYTHON_FENCED_RE.finditer(readme):
+        code = m.group(1).strip()
+        if code and not _is_trivial_install(code) and _looks_like_code(code):
+            return {"code": code, "source": "README"}
+
+    # Priority 2: untagged fenced blocks that look like code
+    for m in _ANY_FENCED_RE.finditer(readme):
+        lang = m.group(1).lower()
+        if lang in _SKIP_LANGS:
+            continue
+        code = m.group(2).strip()
+        if code and not _is_trivial_install(code) and _looks_like_code(code):
+            return {"code": code, "source": "README"}
+
+    # Priority 3: indented code blocks (RST style) — strict check
+    for m in _INDENTED_RE.finditer(readme):
+        code = "\n".join(l[4:] if l.startswith("    ") else l[1:] for l in m.group(1).splitlines())
+        code = code.strip()
+        if code and not _is_trivial_install(code) and _looks_like_code(code, strict=True):
+            return {"code": code, "source": "README"}
+
+    return None

@@ -1,6 +1,6 @@
 "use client"
 
-import { Star, ArrowUpRight, ArrowDownRight, Package, Calendar, Download, Users, TrendingUp } from "lucide-react"
+import { Star, ArrowUpRight, ArrowDownRight, Package, Calendar, Download, Users, TrendingUp, GitFork, Scale, Hash, Minus } from "lucide-react"
 import { Card, CardHeader, CardTitle, CardContent } from "@/components/ui/card"
 import { type PackageStats } from "@/lib/api"
 
@@ -49,124 +49,177 @@ function HealthBadge({ score }: { score: number }) {
 
   return (
     <span
-      className={`inline-flex items-center justify-center size-8 rounded-full text-xs font-bold border ${color}`}
+      className={`inline-flex items-center justify-center size-10 rounded-full text-sm font-bold border ${color}`}
     >
       {score}
     </span>
   )
 }
 
+type Metric = {
+  label: string
+  icon: React.ReactNode
+  render: (p: PackageStats, idx: number) => React.ReactNode
+  skip?: boolean
+}
+
+type Section = {
+  title: string
+  icon: React.ReactNode
+  metrics: Metric[]
+}
+
 export function DeepComparison({ packages, downloadTotals }: DeepComparisonProps) {
   if (packages.length < 2) return null
 
-  // Precompute "best" index for each metric
-  const bestHealth = packages.reduce((best, p, i) =>
-    (p.reposcout_score || 0) > (packages[best].reposcout_score || 0) ? i : best, 0)
-  const bestStars = packages.reduce((best, p, i) =>
-    (p.stars || 0) > (packages[best].stars || 0) ? i : best, 0)
-  const bestDependents = packages.reduce((best, p, i) =>
-    (p.dependents_count || 0) > (packages[best].dependents_count || 0) ? i : best, 0)
-  const bestGrowth = packages.reduce((best, p, i) =>
-    (p.growth_pct || 0) > (packages[best].growth_pct || 0) ? i : best, 0)
-  const bestRelease = packages.reduce((best, p, i) =>
-    (p.days_since_last_release || Infinity) < (packages[best].days_since_last_release || Infinity) ? i : best, 0)
+  const best = (fn: (p: PackageStats) => number, higher = true) =>
+    packages.reduce((b, p, i) =>
+      higher
+        ? fn(p) > fn(packages[b]) ? i : b
+        : fn(p) < fn(packages[b]) ? i : b
+    , 0)
+
+  const bestHealth = best((p) => p.reposcout_score || 0)
+  const bestStars = best((p) => p.stars || 0)
+  const bestDependents = best((p) => p.dependents_count || 0)
+  const bestGrowth = best((p) => p.growth_pct || 0)
+  const bestForks = best((p) => p.forks || 0)
+  const bestVersions = best((p) => p.total_versions || 0)
+  const bestRelease = best((p) => p.days_since_last_release || Infinity, false)
 
   const hasDownloads = downloadTotals && Object.keys(downloadTotals).length > 0
   let bestDownloads = -1
   if (hasDownloads) {
-    bestDownloads = packages.reduce((best, p, i) => {
-      const current = downloadTotals[p.name] || 0
-      const bestVal = downloadTotals[packages[best].name] || 0
-      return current > bestVal ? i : best
+    bestDownloads = packages.reduce((b, p, i) => {
+      const cur = downloadTotals[p.name] || 0
+      const bv = downloadTotals[packages[b].name] || 0
+      return cur > bv ? i : b
     }, 0)
   }
 
-  const metrics: {
-    label: string
-    icon: React.ReactNode
-    render: (p: PackageStats, idx: number) => React.ReactNode
-    skip?: boolean
-  }[] = [
+  const colTemplate = `160px repeat(${packages.length}, 1fr)`
+
+  const sections: Section[] = [
     {
-      label: "Health Score",
-      icon: <TrendingUp className="size-4 text-muted-foreground" />,
-      render: (p, idx) => (
-        <div className="flex items-center gap-1.5">
-          <HealthBadge score={Math.round(p.reposcout_score || 0)} />
-          {idx === bestHealth && <BestBadge />}
-        </div>
-      ),
+      title: "Health & Popularity",
+      icon: <TrendingUp className="size-4" />,
+      metrics: [
+        {
+          label: "Health Score",
+          icon: <TrendingUp className="size-4 text-muted-foreground" />,
+          render: (p, idx) => (
+            <div className="flex items-center gap-1.5">
+              <HealthBadge score={Math.round(p.reposcout_score || 0)} />
+              {idx === bestHealth && <BestBadge />}
+            </div>
+          ),
+        },
+        {
+          label: "GitHub Stars",
+          icon: <Star className="size-4 text-muted-foreground" />,
+          render: (p, idx) => (
+            <div className="flex items-center gap-1.5">
+              <Star className="size-3.5 text-amber-400 fill-amber-400" />
+              <span className="font-medium text-sm">{formatNumber(p.stars || 0)}</span>
+              {idx === bestStars && <BestBadge />}
+            </div>
+          ),
+        },
+        {
+          label: "Dependents",
+          icon: <Users className="size-4 text-muted-foreground" />,
+          render: (p, idx) => (
+            <div className="flex items-center gap-1.5">
+              <span className="font-medium text-sm">{formatNumber(p.dependents_count || 0)}</span>
+              {idx === bestDependents && <BestBadge />}
+            </div>
+          ),
+        },
+        {
+          label: "Monthly Downloads",
+          icon: <Download className="size-4 text-muted-foreground" />,
+          skip: !hasDownloads,
+          render: (p, idx) => {
+            const val = downloadTotals?.[p.name] || 0
+            if (val === 0) return <span className="text-sm text-muted-foreground">—</span>
+            return (
+              <div className="flex items-center gap-1.5">
+                <Download className="size-3.5 text-muted-foreground" />
+                <span className="font-medium text-sm">{formatNumber(val)}</span>
+                {idx === bestDownloads && <BestBadge />}
+              </div>
+            )
+          },
+        },
+        {
+          label: "YoY Growth",
+          icon: <ArrowUpRight className="size-4 text-muted-foreground" />,
+          render: (p, idx) => {
+            const g = p.growth_pct || 0
+            const color = g > 5 ? "text-emerald-600" : g < -5 ? "text-red-500" : "text-muted-foreground"
+            const Icon = g > 0 ? ArrowUpRight : g < 0 ? ArrowDownRight : Minus
+            return (
+              <div className="flex items-center gap-1">
+                <Icon className={`size-3.5 ${color}`} />
+                <span className={`font-medium text-sm ${color}`}>{g.toFixed(1)}%</span>
+                {idx === bestGrowth && <BestBadge />}
+              </div>
+            )
+          },
+        },
+      ],
     },
     {
-      label: "GitHub Stars",
-      icon: <Star className="size-4 text-muted-foreground" />,
-      render: (p, idx) => (
-        <div className="flex items-center gap-1.5">
-          <Star className="size-3.5 text-amber-400 fill-amber-400" />
-          <span className="font-medium text-sm">{formatNumber(p.stars || 0)}</span>
-          {idx === bestStars && <BestBadge />}
-        </div>
-      ),
-    },
-    {
-      label: "Dependents",
-      icon: <Users className="size-4 text-muted-foreground" />,
-      render: (p, idx) => (
-        <div className="flex items-center gap-1.5">
-          <span className="font-medium text-sm">{formatNumber(p.dependents_count || 0)}</span>
-          {idx === bestDependents && <BestBadge />}
-        </div>
-      ),
-    },
-    {
-      label: "YoY Growth",
-      icon: <ArrowUpRight className="size-4 text-muted-foreground" />,
-      render: (p, idx) => {
-        const g = p.growth_pct || 0
-        const color = g > 5 ? "text-emerald-600" : g < -5 ? "text-red-500" : "text-muted-foreground"
-        const Icon = g > 0 ? ArrowUpRight : g < 0 ? ArrowDownRight : Package
-        return (
-          <div className="flex items-center gap-1">
-            <Icon className={`size-3.5 ${color}`} />
-            <span className={`font-medium text-sm ${color}`}>{g.toFixed(1)}%</span>
-            {idx === bestGrowth && <BestBadge />}
-          </div>
-        )
-      },
-    },
-    {
-      label: "Latest Release",
-      icon: <Calendar className="size-4 text-muted-foreground" />,
-      render: (p, idx) => {
-        const days = p.days_since_last_release
-        const color = days <= 90 ? "text-emerald-600" : days <= 365 ? "text-amber-600" : "text-red-500"
-        return (
-          <div className="flex items-center gap-1.5">
-            <span className={`text-sm font-medium ${color}`}>
-              {p.latest_version || "—"}
-            </span>
-            <span className="text-xs text-muted-foreground">
-              ({relativeTime(days)})
-            </span>
-            {idx === bestRelease && <BestBadge />}
-          </div>
-        )
-      },
-    },
-    {
-      label: "Monthly Downloads",
-      icon: <Download className="size-4 text-muted-foreground" />,
-      skip: !hasDownloads,
-      render: (p, idx) => {
-        const val = downloadTotals?.[p.name] || 0
-        if (val === 0) return <span className="text-sm text-muted-foreground">—</span>
-        return (
-          <div className="flex items-center gap-1.5">
-            <span className="font-medium text-sm">{formatNumber(val)}</span>
-            {idx === bestDownloads && <BestBadge />}
-          </div>
-        )
-      },
+      title: "Maintenance & Maturity",
+      icon: <Calendar className="size-4" />,
+      metrics: [
+        {
+          label: "Latest Release",
+          icon: <Calendar className="size-4 text-muted-foreground" />,
+          render: (p, idx) => {
+            const days = p.days_since_last_release
+            const color = days <= 90 ? "text-emerald-600" : days <= 365 ? "text-amber-600" : "text-red-500"
+            return (
+              <div className="flex items-center gap-1.5">
+                <span className={`text-sm font-medium ${color}`}>
+                  {p.latest_version || "—"}
+                </span>
+                <span className="text-xs text-muted-foreground">
+                  ({relativeTime(days)})
+                </span>
+                {idx === bestRelease && <BestBadge />}
+              </div>
+            )
+          },
+        },
+        {
+          label: "Total Versions",
+          icon: <Hash className="size-4 text-muted-foreground" />,
+          render: (p, idx) => (
+            <div className="flex items-center gap-1.5">
+              <span className="font-medium text-sm">{p.total_versions || 0} releases</span>
+              {idx === bestVersions && <BestBadge />}
+            </div>
+          ),
+        },
+        {
+          label: "Forks",
+          icon: <GitFork className="size-4 text-muted-foreground" />,
+          render: (p, idx) => (
+            <div className="flex items-center gap-1.5">
+              <span className="font-medium text-sm">{formatNumber(p.forks || 0)}</span>
+              {idx === bestForks && <BestBadge />}
+            </div>
+          ),
+        },
+        {
+          label: "License",
+          icon: <Scale className="size-4 text-muted-foreground" />,
+          render: (p) => (
+            <span className="text-sm font-medium">{p.license || "—"}</span>
+          ),
+        },
+      ],
     },
   ]
 
@@ -183,47 +236,59 @@ export function DeepComparison({ packages, downloadTotals }: DeepComparisonProps
             </div>
           </CardHeader>
           <CardContent className="pt-2">
-            {/* Avatar row */}
-            <div className="flex flex-wrap gap-4 mb-6">
+            {/* Avatar row — centered in columns */}
+            <div
+              className="grid gap-4 px-4 mb-6"
+              style={{ gridTemplateColumns: colTemplate }}
+            >
+              <div />
               {packages.map((p, i) => (
-                <div key={p.name} className="flex items-center gap-2.5">
+                <div key={p.name} className="flex flex-col items-center text-center gap-1.5">
                   <div
-                    className="size-9 rounded-full flex items-center justify-center text-white text-xs font-bold shrink-0"
+                    className="size-12 rounded-full flex items-center justify-center text-white text-sm font-bold"
                     style={{ backgroundColor: AVATAR_COLORS[i % AVATAR_COLORS.length] }}
                   >
                     {getInitials(p.name)}
                   </div>
-                  <div className="min-w-0">
-                    <div className="text-sm font-semibold truncate">{p.name}</div>
-                    <div className="text-xs text-muted-foreground truncate max-w-[180px]">
-                      {p.summary || ""}
-                    </div>
+                  <div className="font-semibold text-sm">{p.name}</div>
+                  <div className="text-xs text-muted-foreground line-clamp-1 max-w-[200px]">
+                    {p.summary || ""}
                   </div>
                 </div>
               ))}
             </div>
 
-            {/* Comparison rows */}
+            {/* Sectioned comparison rows */}
             <div className="border rounded-lg overflow-hidden">
-              {metrics
-                .filter((m) => !m.skip)
-                .map((metric, mIdx) => (
-                  <div
-                    key={metric.label}
-                    className={`grid items-center gap-4 px-4 py-3 ${mIdx % 2 === 0 ? "bg-muted/30" : ""}`}
-                    style={{
-                      gridTemplateColumns: `180px repeat(${packages.length}, 1fr)`,
-                    }}
-                  >
-                    <div className="flex items-center gap-2 text-sm text-muted-foreground font-medium">
-                      {metric.icon}
-                      {metric.label}
+              {sections.map((section) => {
+                const visibleMetrics = section.metrics.filter((m) => !m.skip)
+                if (visibleMetrics.length === 0) return null
+                return (
+                  <div key={section.title}>
+                    {/* Section header */}
+                    <div className="flex items-center gap-2 px-4 py-2.5 bg-muted/60 border-b">
+                      {section.icon}
+                      <span className="text-sm font-semibold">{section.title}</span>
                     </div>
-                    {packages.map((p, idx) => (
-                      <div key={p.name}>{metric.render(p, idx)}</div>
+                    {/* Metric rows */}
+                    {visibleMetrics.map((metric, mIdx) => (
+                      <div
+                        key={metric.label}
+                        className={`grid items-center gap-4 px-4 py-3 ${mIdx % 2 === 0 ? "" : "bg-muted/20"}`}
+                        style={{ gridTemplateColumns: colTemplate }}
+                      >
+                        <div className="flex items-center gap-2 text-sm text-muted-foreground font-medium">
+                          {metric.icon}
+                          {metric.label}
+                        </div>
+                        {packages.map((p, idx) => (
+                          <div key={p.name} className="flex justify-center">{metric.render(p, idx)}</div>
+                        ))}
+                      </div>
                     ))}
                   </div>
-                ))}
+                )
+              })}
             </div>
           </CardContent>
         </Card>

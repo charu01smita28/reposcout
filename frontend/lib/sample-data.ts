@@ -7,9 +7,9 @@ export const suggestedQueries: Record<string, { icon: string; query: string; bor
   ],
   explore: [
     { icon: "Search", query: "Best Python libraries for web scraping", borderColor: "border-l-[#6366f1]" },
-    { icon: "Search", query: "Top Python libraries for data validation", borderColor: "border-l-[#10b981]" },
-    { icon: "Search", query: "Best Python libraries for task queues", borderColor: "border-l-[#f59e0b]" },
-    { icon: "Search", query: "Top Python libraries for PDF parsing", borderColor: "border-l-[#8b5cf6]" },
+    { icon: "Search", query: "Best Python libraries for async processing", borderColor: "border-l-[#10b981]" },
+    { icon: "Search", query: "Best Python libraries for file handling", borderColor: "border-l-[#f59e0b]" },
+    { icon: "Search", query: "Best Python libraries for machine learning", borderColor: "border-l-[#8b5cf6]" },
   ],
   compare: [
     { icon: "GitCompare", query: "Compare FastAPI vs Django vs Flask", borderColor: "border-l-[#6366f1]" },
@@ -210,14 +210,14 @@ async def my_endpoint(request: Request):
 
 export const aiSynthesis = {
   summary:
-    'Based on analysis of 47 Python rate limiting packages across 234,500 dependent projects:',
+    'Based on analysis of 47 Python rate limiting packages across 85K+ indexed projects:',
   recommendation:
     '**slowapi** is the recommended choice for new FastAPI projects due to 312% growth and native async support. For Django projects, **django-ratelimit** remains the standard with strong maintainer activity. If you need a framework-agnostic solution, **limits** provides the most flexible backend support (Redis, Memcached, MongoDB) but shows declining adoption.',
   dataSources: [
-    "Libraries.io package registry (2.6M packages)",
-    "GitHub API (stars, issues, commits)",
+    "DuckDB — 85K+ packages (stars, dependents, growth trends)",
+    "Qdrant Cloud — semantic search (80K vectors, Mistral Embed)",
     "PyPI download statistics",
-    "Dependency graph analysis (235M relationships)",
+    "GitHub repository metrics",
   ],
   followUps: [
     {
@@ -236,7 +236,7 @@ export const aiSynthesis = {
 }
 
 export const loadingSteps = [
-  "Searching 400K Python packages...",
+  "Searching 85K+ packages across PyPI...",
   "Analyzing dependency graph...",
   "Fetching source code...",
   "Synthesizing results...",

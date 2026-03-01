@@ -1,8 +1,12 @@
-from qdrant_client import QdrantClient
+import logging
+
+from qdrant_client import QdrantClient, models
 from qdrant_client.models import Distance, VectorParams, PointStruct
 from mistralai import Mistral
 from backend.config import QDRANT_PATH, QDRANT_URL, QDRANT_API_KEY, QDRANT_COLLECTION, EMBEDDING_DIM, MISTRAL_API_KEY
 from backend.models import SemanticSearchResult
+
+logger = logging.getLogger(__name__)
 
 _client: QdrantClient | None = None
 _mistral: Mistral | None = None
@@ -49,28 +53,69 @@ def get_embeddings_batch(texts: list[str]) -> list[list[float]]:
 
 def semantic_search_packages(query: str, limit: int = 20, score_threshold: float = 0.3) -> list[dict]:
     """Search Qdrant for packages matching the query.
+    Filters out junk (0 stars AND 0 dependents AND 0 growth).
     Returns lean results (QdrantPayload fields + similarity_score).
     For full data, caller should enrich from DuckDB by package name."""
     client = get_client()
     query_embedding = get_embedding(query)
-    results = client.search(
+
+    # Fetch extra results, then post-filter junk and re-rank by quality
+    fetch_limit = limit * 10
+    response = client.query_points(
         collection_name=QDRANT_COLLECTION,
-        query_vector=query_embedding,
-        limit=limit,
+        query=query_embedding,
+        limit=fetch_limit,
         score_threshold=score_threshold,
     )
-    return [
-        SemanticSearchResult(
-            name=hit.payload.get("name", ""),
-            summary=hit.payload.get("summary", ""),
-            stars=hit.payload.get("stars", 0),
-            dependent_count=hit.payload.get("dependent_count", 0),
-            growth_pct=hit.payload.get("growth_pct", 0),
-            version=hit.payload.get("version", ""),
-            similarity_score=hit.score,
-        ).model_dump()
-        for hit in results
-    ]
+
+    results = []
+    for hit in response.points:
+        stars = hit.payload.get("stars", 0) or 0
+        deps = hit.payload.get("dependent_count", 0) or 0
+        growth = hit.payload.get("growth_pct", 0) or 0
+
+        # Skip junk: need real adoption — 100+ dependents minimum
+        if deps < 100:
+            continue
+
+        # Blend: semantic similarity + popularity boost
+        popularity = min((stars + deps * 10) / 10000, 1.0)
+        growth_boost = min(growth / 1000, 0.5) if growth > 0 else 0
+        blended_score = hit.score * 0.6 + popularity * 0.25 + growth_boost * 0.15
+
+        results.append(
+            (
+                blended_score,
+                SemanticSearchResult(
+                    name=hit.payload.get("name", ""),
+                    summary=hit.payload.get("summary", ""),
+                    stars=stars,
+                    dependent_count=deps,
+                    growth_pct=growth,
+                    version=hit.payload.get("version", ""),
+                    similarity_score=hit.score,
+                ).model_dump(),
+            )
+        )
+
+    # Sort by blended score, return top `limit`
+    results.sort(key=lambda x: x[0], reverse=True)
+    final = [r[1] for r in results[:limit]]
+
+    # Log top 10 for debugging
+    logger.info("Qdrant search: %r → %d results (from %d raw)", query, len(final), len(response.points))
+    for i, pkg in enumerate(final[:10]):
+        logger.info(
+            "  #%d %-30s  stars=%-6s deps=%-6s growth=%-6s%% sim=%.3f",
+            i + 1,
+            pkg["name"],
+            pkg["stars"],
+            pkg["dependent_count"],
+            pkg["growth_pct"],
+            pkg["similarity_score"],
+        )
+
+    return final
 
 
 def upsert_packages(points: list[PointStruct], batch_size: int = 100):
