@@ -2,7 +2,7 @@
 
 > **"RepoScout doesn't guess — it knows."**
 
-An **agentic RAG system** that queries **85K+ Python packages**, **2M+ dependency signals**, and **360K+ download data points** to deliver data-driven open source intelligence. Built on a **multi-model Mistral AI pipeline** with function calling, semantic retrieval, and real-time code analysis.
+An **agentic RAG system** that queries **85K+ Python packages** (2020–2026 data), **2M+ dependency signals**, and **390K+ download data points** to deliver data-driven open source intelligence. Built on a **multi-model Mistral AI pipeline** with function calling, semantic retrieval, and real-time code analysis.
 
 RepoScout is not a chatbot with package opinions. It's an autonomous research agent that retrieves structured data from a pre-indexed PyPI ecosystem snapshot, augments it with live metadata and source code, and synthesizes actionable recommendations grounded in real adoption metrics.
 
