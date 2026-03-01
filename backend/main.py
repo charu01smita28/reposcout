@@ -20,7 +20,7 @@ STREAM_CACHE_DIR.mkdir(parents=True, exist_ok=True)
 
 # Replay delays per event type (seconds) — feels natural, not instant
 _REPLAY_DELAYS = {
-    "progress": 0.8,
+    "progress": 1.2,
     "metadata": 0.1,
     "token": 0.0,    # tokens flush via sleep(0)
     "downloads": 0.0,

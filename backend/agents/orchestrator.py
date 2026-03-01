@@ -18,6 +18,12 @@ _GROWTH_QUERY_RE = re.compile(
     re.IGNORECASE,
 )
 
+# Domain-specific queries — growth override should NOT apply
+_SPECIFIC_DOMAIN_RE = re.compile(
+    r"\b(orm|database|web.?scrap|test|auth|http|api|async|queue|cache|log|email|csv|excel|pdf|image|video|cli|gui)\b",
+    re.IGNORECASE,
+)
+
 _client: Mistral | None = None
 
 TOOLS = [
@@ -340,6 +346,13 @@ async def run_agent(user_query: str, mode: str = "auto") -> dict:
 
     final_text = response.choices[0].message.content
 
+    # For growth queries: override LLM's package picks with actual top growth packages
+    if is_growth_query and search_data and not _SPECIFIC_DOMAIN_RE.search(user_query):
+        growth_packages = []
+        await _auto_fetch_top_growth(search_data, growth_packages, tool_calls_log, [])
+        if growth_packages:
+            packages_data = growth_packages
+
     return {
         "analysis": final_text,
         "tool_calls": tool_calls_log,
@@ -348,6 +361,52 @@ async def run_agent(user_query: str, mode: str = "auto") -> dict:
         "packages": packages_data,
         "search": search_data,
     }
+
+
+async def _auto_fetch_top_growth(search_result: dict, packages_data: list, tool_calls_log: list, messages: list):
+    """For growth queries: auto-fetch stats for top packages by growth with real adoption.
+    Filters for 200+ deps and 500+ stars to exclude noise, then picks top 7 by growth_pct."""
+    pkgs = search_result.get("packages", [])
+    # Filter for real adoption, then sort by growth
+    quality = [
+        p for p in pkgs
+        if p.get("dependents_count", p.get("dependent_count", 0)) >= 200
+        and p.get("stars", 0) >= 500
+    ]
+    quality.sort(key=lambda p: p.get("growth_pct", 0), reverse=True)
+    top = quality[:7]
+
+    # Fallback: if quality filter is too strict, use top 5 by growth_pct * ln(deps)
+    if len(top) < 3:
+        import math
+        by_growth = sorted(pkgs, key=lambda p: p.get("growth_pct", 0) * math.log(max(p.get("dependents_count", p.get("dependent_count", 0)), 1) + 1), reverse=True)
+        top = by_growth[:5]
+
+    already_fetched = {p.get("name", "").lower() for p in packages_data}
+    fetched_summaries = []
+
+    for pkg in top:
+        name = pkg.get("name", "")
+        if not name or name.lower() in already_fetched:
+            continue
+        already_fetched.add(name.lower())
+        result_str = await execute_tool("get_package_stats", json.dumps({"package_name": name}))
+        result_parsed = json.loads(result_str)
+        if "error" not in result_parsed:
+            packages_data.append(result_parsed)
+            tool_calls_log.append({
+                "tool": "get_package_stats",
+                "args": {"package_name": name},
+                "result_preview": result_str[:500],
+            })
+            fetched_summaries.append(f"- {name}: {result_str[:500]}")
+
+    # Add as a single user message so Mistral Large sees the data (must end on user role)
+    if fetched_summaries:
+        messages.append({
+            "role": "user",
+            "content": "Here are detailed stats for the top growth packages:\n" + "\n".join(fetched_summaries),
+        })
 
 
 TOOL_DISPLAY = {
@@ -527,6 +586,13 @@ async def run_agent_stream(user_query: str, mode: str = "auto"):
             tools=TOOLS,
             tool_choice="auto",
         )
+
+    # For growth queries: override LLM's package picks with actual top growth packages
+    if is_growth_query and search_data and not _SPECIFIC_DOMAIN_RE.search(user_query):
+        growth_packages = []
+        await _auto_fetch_top_growth(search_data, growth_packages, tool_calls_log, [])
+        if growth_packages:
+            packages_data = growth_packages
 
     # --- Phase 1: yield metadata — cards render NOW ---
     yield {
