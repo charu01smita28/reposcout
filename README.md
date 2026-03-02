@@ -284,6 +284,23 @@ Growth-aware pipeline that surfaces packages by real adoption velocity — not j
 
 Monthly download trend charts for analyzed packages — see which libraries are gaining or losing traction over the past 6 months.
 
+### Guardrails & AI Safety
+
+> *"Make me a phishing site"* → **Rejected**
+
+RepoScout implements a **two-layer guardrail system** to ensure safe, on-topic interactions:
+
+1. **Mistral Moderation** — The first model in the pipeline acts as a safety filter, blocking harmful, toxic, or unsafe content before it reaches the agent
+2. **Intent Classification** — Ministral 8B routes queries into `explore`, `compare`, or `reject` — any query unrelated to Python packages, libraries, open source, or software development is rejected outright
+
+Queries about weather, sports, cooking, jokes, personal questions, math homework, general knowledge trivia, and any harmful or unsafe requests are automatically rejected — RepoScout is purpose-built for Python package intelligence.
+
+**Examples of rejected queries:**
+- "Make me a phishing site" — harmful, blocked by moderation
+- "What's the weather today?" — off-topic, rejected by classifier
+- "Write me a phishing email" — harmful, blocked by moderation
+- "Tell me a joke" — unrelated to software, rejected by classifier
+
 ---
 
 ## **BONUS: Stay Ahead in the AI Game**
@@ -480,6 +497,34 @@ The complete pre-indexed dataset is available on Hugging Face:
 
 
 
+## Future Roadmap
+
+- **Expand dataset coverage** — Integrate historical dependency graph data (Libraries.io) to add version-level dependency resolution, historical maintainer activity, and repository-level metadata for 4M+ projects. This would significantly deepen the intelligence layer beyond the current 85K-package snapshot.
+- **Automated data refresh pipeline** — Build a scheduled job (cron / GitHub Actions) that periodically re-fetches PyPI metadata, download statistics, and dependency counts so RepoScout always reflects the latest state of the Python ecosystem — not a point-in-time snapshot.
+- **Evaluation and benchmarks** — Develop a test suite with ground-truth queries and expected package rankings to measure retrieval precision, agent tool-calling accuracy, and synthesis quality. Add automated regression testing to catch quality degradation as the system evolves.
+
+---
+
+## Demo
+
+### Search Interface & Suggestion Cards
+![Search Interface](docs/Screenshot01.png)
+
+### Stats Banner & Comparison Table
+![Stats and Comparison](docs/Screenshot02.png)
+
+### Charts — Adoption & Download Trends
+![Charts and Download Trends](docs/Screenshot04.png)
+
+### AI-Powered Analysis
+![AI Analysis](docs/Screenshot03.png)
+![AI Recommendations & Follow-ups](docs/Screenshot05.png)
+
+### Guardrails in Action
+![Rejected Query](docs/Screenshot06.png)
+
+---
+
 ## Built With & Acknowledgments
 
 RepoScout stands on the shoulders of incredible open-source projects and platforms. Grateful to the teams behind each of these:
@@ -494,23 +539,6 @@ RepoScout stands on the shoulders of incredible open-source projects and platfor
 | [**pypistats.org**](https://pypistats.org/) | Community-run PyPI download statistics API | 6 months of daily download data powering trend charts |
 | [**Next.js**](https://nextjs.org/) | React framework for production web apps | Frontend with SSE streaming, real-time UI updates |
 | [**FastAPI**](https://fastapi.tiangolo.com/) | Modern Python web framework for building APIs | Backend serving SSE streams, REST endpoints, and orchestrating the agent pipeline |
-
-## Future Roadmap
-
-- **Expand dataset coverage** — Integrate historical dependency graph data (Libraries.io) to add version-level dependency resolution, historical maintainer activity, and repository-level metadata for 4M+ projects. This would significantly deepen the intelligence layer beyond the current 85K-package snapshot.
-- **Automated data refresh pipeline** — Build a scheduled job (cron / GitHub Actions) that periodically re-fetches PyPI metadata, download statistics, and dependency counts so RepoScout always reflects the latest state of the Python ecosystem — not a point-in-time snapshot.
-- **Evaluation and benchmarks** — Develop a test suite with ground-truth queries and expected package rankings to measure retrieval precision, agent tool-calling accuracy, and synthesis quality. Add automated regression testing to catch quality degradation as the system evolves.
-
----
-
-## Demo
-
-### Stats, Comparison Table & Charts
-![Stats and Comparison](docs/Screenshot2.png)
-![Charts and Download Trends](docs/Screenshot4.png)
-
-### AI-Powered Analysis
-![AI Analysis](docs/Screenshot3.png)
 
 ---
 
