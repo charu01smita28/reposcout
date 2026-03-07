@@ -544,4 +544,5 @@ RepoScout stands on the shoulders of incredible open-source projects and platfor
 
 ## License
 
-Apache 2.0
+© 2026 Charusmita Dhiman. All Rights Reserved.
+No permission is granted to copy, modify, distribute, or use any part of this codebase.
