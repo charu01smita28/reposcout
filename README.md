@@ -525,23 +525,6 @@ The complete pre-indexed dataset is available on Hugging Face:
 
 ---
 
-## Built With & Acknowledgments
-
-RepoScout stands on the shoulders of incredible open-source projects and platforms. Grateful to the teams behind each of these:
-
-| Technology | What it does | How RepoScout uses it |
-|------------|-------------|----------------------|
-| [**Mistral AI**](https://mistral.ai/) | French AI lab building open-weight and commercial LLMs | 5 models power the full pipeline — moderation, classification, orchestration, code analysis, and embeddings |
-| [**Qdrant**](https://qdrant.tech/) | Open-source vector database for similarity search | Hosts 80K+ package embeddings (1024 dims) on Qdrant Cloud for semantic package discovery |
-| [**DuckDB**](https://duckdb.org/) | In-process analytical database (like SQLite for analytics) | Stores all structured data — 85K packages, metadata, and 390K+ download stats in a single `.db` file |
-| [**Google deps.dev**](https://deps.dev/) | Open source dependency intelligence by Google | Primary data source for package dependency graphs and adoption metrics via BigQuery |
-| [**PyPI**](https://pypi.org/) | The Python Package Index — official package repository | READMEs, keywords, classifiers, version history, and dependency lists for 85K packages |
-| [**pypistats.org**](https://pypistats.org/) | Community-run PyPI download statistics API | 6 months of daily download data powering trend charts |
-| [**Next.js**](https://nextjs.org/) | React framework for production web apps | Frontend with SSE streaming, real-time UI updates |
-| [**FastAPI**](https://fastapi.tiangolo.com/) | Modern Python web framework for building APIs | Backend serving SSE streams, REST endpoints, and orchestrating the agent pipeline |
-
----
-
 ## License
 
 © 2026 Charusmita Dhiman. All Rights Reserved.

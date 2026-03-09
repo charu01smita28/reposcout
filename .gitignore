@@ -13,6 +13,7 @@ data/
 
 # Environment
 .env
+.git-backup
 
 # Python
 __pycache__/
