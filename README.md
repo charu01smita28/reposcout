@@ -10,6 +10,8 @@ RepoScout is not a chatbot with package opinions. It's an autonomous research ag
 
 ## Demo
 
+🎬 **[See RepoScout in action → Watch Demo](https://youtu.be/XHTHrZgVK0U)**
+
 [![Watch the demo](docs/Screenshot02.png)](https://youtu.be/XHTHrZgVK0U)
 
 ---
