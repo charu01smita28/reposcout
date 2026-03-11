@@ -8,6 +8,12 @@ RepoScout is not a chatbot with package opinions. It's an autonomous research ag
 
 ---
 
+## Demo
+
+[![Watch the demo](docs/Screenshot02.png)](https://youtu.be/XHTHrZgVK0U)
+
+---
+
 ## Agentic RAG Architecture
 
 RepoScout implements a **5-model agentic RAG pipeline** where each model handles a specialized stage:
