@@ -2,7 +2,7 @@
 
 > **"RepoScout doesn't guess, It knows!"**
 
-**[Try it live → reposcout-v2.vercel.app](https://reposcout-v2.vercel.app)**
+**[Try it live → reposcout.app](https://www.reposcout.app/)**
 
 An **agentic RAG system** that queries **85K+ Python packages**, **2M+ dependency signals**, and **390K+ download data points** to deliver data-driven open source intelligence — not opinions, not guesses, but real metrics from real data.
 
