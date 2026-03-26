@@ -410,4 +410,3 @@ RepoScout is a full-stack AI system built end-to-end by a single engineer. Here'
 ## License
 
 (C) 2026 Charusmita Dhiman. All Rights Reserved.
-No permission is granted to copy, modify, distribute, or use any part of this codebase.
