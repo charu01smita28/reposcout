@@ -385,8 +385,7 @@ RepoScout surfaces real-time shifts in the AI ecosystem:
 ![Charts and Download Trends](docs/Screenshot04.png)
 
 ### AI-Powered Analysis
-![AI Analysis](docs/Screenshot03.png)
-![AI Recommendations & Follow-ups](docs/Screenshot05.png)
+![AI Analysis](docs/snapshot9.png)
 
 ### Guardrails in Action
 ![Rejected Query](docs/Screenshot06.png)
