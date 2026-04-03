@@ -283,6 +283,10 @@ Built-in observability and evaluation dashboard at `/dashboard`:
 | Avg Latency (explore) | **~18s** |
 | Avg Latency (reject) | **~1.5s** |
 
+![Dashboard Overview](docs/dashboard_overview.png)
+
+![Dashboard Traces](docs/dashboard_traces.png)
+
 ### Persistent Caching (L1 + L2)
 
 Two-tier caching for instant repeat queries:
@@ -421,27 +425,6 @@ RepoScout surfaces real-time shifts in the AI ecosystem:
 
 ### Guardrails in Action
 ![Rejected Query](docs/Screenshot06.png)
-
-### Evaluation Dashboard — Overview
-![Dashboard Overview](docs/dashboard_overview.png)
-
-### Evaluation Dashboard — Traces & Waterfall
-![Dashboard Traces](docs/dashboard_traces.png)
-
----
-
-## What This Demonstrates
-
-RepoScout is a full-stack AI system built end-to-end by a single engineer. Here's what it proves:
-
-- **LLM + Structured Data** — not a chatbot wrapper. RepoScout connects LLMs to a real PostgreSQL database with 600K+ rows and lets users query it in plain English via NL-to-SQL
-- **Agentic Architecture** — the orchestrator autonomously decides its research strategy, selects tools, and iterates until it has enough data to answer. No hardcoded flows
-- **Zero Hallucination by Design** — no vibes, no made-up numbers. Every statistic RepoScout cites is traceable to a real database row. Data confidence labels tell you *how* grounded each answer is. Post-response verification cross-checks cited stats against actual tool results. When data is missing, it says "insufficient data" — never fabricates
-- **Multi-Model Cost Engineering** — 5 models from 2 providers, each chosen for the right cost-performance tradeoff at its stage. Not "throw GPT-4 at everything"
-- **Production REST API** — FastAPI backend with 10 endpoints, SSE streaming, and Pydantic models. Designed to be consumed by any frontend
-- **Data Pipeline at Scale** — ingested and normalized data from 4 sources (BigQuery, PyPI, pypistats, GitHub) into a relational schema with proper foreign keys
-- **Client-Ready Output** — not just AI chat. PDF reports, comparison tables, trend charts, health scores — deliverable artifacts, not conversations
-- **Evaluation Infrastructure** — 50-query golden test set with Recall@K, MRR, LLM-as-judge scoring. Built-in observability dashboard with per-stage tracing, latency percentiles, and feedback tracking. Persistent two-tier caching with cache hit rate monitoring
 
 ---
 
