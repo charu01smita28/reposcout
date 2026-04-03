@@ -262,6 +262,33 @@ SSE-based streaming architecture:
 - **Phase 3**: Analysis text streams token-by-token for typewriter effect
 - **Phase 4**: Download chart data fetched in background, sent when ready
 
+### Evaluation Dashboard
+
+Built-in observability and evaluation dashboard at `/dashboard`:
+
+- **Overview** — KPI cards (total queries, avg latency, cache hit rate, satisfaction), latency percentile trends (p50/p95/p99), pipeline stage breakdown
+- **Traces** — Full waterfall breakdown for every query: per-stage timing, individual tool call durations, iteration count
+- **Feedback** — Thumbs up/down satisfaction tracking with daily trends
+
+### Offline Evaluation Framework
+
+50-query golden test set measuring retrieval quality (Recall@K, MRR), response quality (LLM-as-judge on 5 criteria), classification accuracy, and safety guardrails.
+
+| Metric | Score |
+|--------|-------|
+| Classification Accuracy | **100%** |
+| Judge: Relevance | **4.90/5** |
+| Judge: Accuracy | **4.92/5** |
+| Judge: Hallucination | **4.97/5** |
+| Avg Latency (explore) | **~18s** |
+| Avg Latency (reject) | **~1.5s** |
+
+### Persistent Caching (L1 + L2)
+
+Two-tier caching for instant repeat queries:
+- **L1: In-memory LRU** — fuzzy word matching, instant replay
+- **L2: PostgreSQL** — SHA-256 hash lookup, 24-hour TTL, persists across deploys
+
 ### Guardrails & AI Safety
 
 > *"Make me a phishing site"* → **Rejected**
@@ -306,6 +333,11 @@ Production REST API powering the Next.js frontend via SSE streaming and JSON end
 | `GET` | `/api/stats` | Dataset statistics |
 | `GET` | `/api/search/quick` | Fast semantic search (no agent, low latency) |
 | `GET` | `/api/dependents/{name}` | Reverse dependency lookup |
+| `POST` | `/api/feedback` | Submit thumbs up/down rating |
+| `GET` | `/api/dashboard/overview` | KPI summary (latency, cache rate, errors) |
+| `GET` | `/api/dashboard/traces` | Query traces with stage timings |
+| `GET` | `/api/dashboard/stages` | Per-stage timing breakdown |
+| `GET` | `/api/dashboard/feedback` | Feedback summary and trends |
 
 ---
 
@@ -390,6 +422,12 @@ RepoScout surfaces real-time shifts in the AI ecosystem:
 ### Guardrails in Action
 ![Rejected Query](docs/Screenshot06.png)
 
+### Evaluation Dashboard — Overview
+![Dashboard Overview](docs/dashboard_overview.png)
+
+### Evaluation Dashboard — Traces & Waterfall
+![Dashboard Traces](docs/dashboard_traces.png)
+
 ---
 
 ## What This Demonstrates
@@ -403,6 +441,7 @@ RepoScout is a full-stack AI system built end-to-end by a single engineer. Here'
 - **Production REST API** — FastAPI backend with 10 endpoints, SSE streaming, and Pydantic models. Designed to be consumed by any frontend
 - **Data Pipeline at Scale** — ingested and normalized data from 4 sources (BigQuery, PyPI, pypistats, GitHub) into a relational schema with proper foreign keys
 - **Client-Ready Output** — not just AI chat. PDF reports, comparison tables, trend charts, health scores — deliverable artifacts, not conversations
+- **Evaluation Infrastructure** — 50-query golden test set with Recall@K, MRR, LLM-as-judge scoring. Built-in observability dashboard with per-stage tracing, latency percentiles, and feedback tracking. Persistent two-tier caching with cache hit rate monitoring
 
 ---
 
