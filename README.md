@@ -287,6 +287,24 @@ Built-in observability and evaluation dashboard at `/dashboard`:
 
 ![Dashboard Traces](docs/dashboard_traces.png)
 
+### Braintrust Experiment Tracking
+
+Integrated [Braintrust](https://www.braintrust.dev/) for versioned experiment tracking and automated regression detection across pipeline changes:
+
+- **Versioned Datasets** — 50 golden queries stored as a Braintrust Dataset with expected outputs, enabling reproducible evaluation
+- **9 automated scorers** — 6 custom retrieval metrics (Recall@K, Precision@K, MRR, classification accuracy, must-mention, min-packages) + 3 LLM-as-judge scorers (Factuality, AnswerRelevancy, PackageRecommendationQuality)
+- **Experiment comparison** — automatic diffing between runs surfaces per-query regressions after code changes
+- **Baseline import** — existing offline eval results imported as baseline for comparison against live experiment runs
+
+```bash
+
+# Run evaluation with experiment tracking
+python -m scripts.braintrust_eval run --experiment "after-reranking-fix"
+
+# Import existing eval results as baseline
+python -m scripts.braintrust_eval import-baseline eval_report.json
+```
+
 ### Persistent Caching (L1 + L2)
 
 Two-tier caching for instant repeat queries:
