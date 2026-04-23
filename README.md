@@ -277,10 +277,13 @@ Built-in observability and evaluation dashboard at `/dashboard`:
 | Metric | Score |
 |--------|-------|
 | Classification Accuracy | **100%** |
+| Retrieval Recall@K | **58.7%** |
+| Must-Mention Pass Rate | **82.5%** |
 | Judge: Relevance | **4.90/5** |
 | Judge: Accuracy | **4.92/5** |
 | Judge: Hallucination | **4.97/5** |
 | Avg Latency (explore) | **~18s** |
+| Avg Latency (compare) | **~12s** |
 | Avg Latency (reject) | **~1.5s** |
 
 ![Dashboard Overview](docs/dashboard_overview.png)
@@ -443,6 +446,33 @@ RepoScout surfaces real-time shifts in the AI ecosystem:
 
 ### Guardrails in Action
 ![Rejected Query](docs/Screenshot06.png)
+
+---
+
+## Future Roadmap
+
+- **Expand dataset coverage** — Integrate historical dependency graph data (Libraries.io) to add version-level dependency resolution, historical maintainer activity, and repository-level metadata for 4M+ projects. Would significantly deepen the intelligence layer beyond the current 85K-package snapshot.
+- **Automated data refresh pipeline** — Scheduled job (cron / GitHub Actions) that periodically re-fetches PyPI metadata, download statistics, and dependency counts so RepoScout always reflects the latest state of the Python ecosystem — not a point-in-time snapshot.
+- ~~**Evaluation and benchmarks**~~ — **DONE.** 50-query golden test set with Recall@K, MRR, LLM-as-judge (5 criteria), and full observability dashboard with per-stage tracing. See [Evaluation Dashboard](#evaluation-dashboard) and [Offline Evaluation Framework](#offline-evaluation-framework).
+
+---
+
+## Built With & Acknowledgments
+
+RepoScout stands on the shoulders of incredible open-source projects and platforms. Grateful to the teams behind each of these:
+
+| Technology | What it does | How RepoScout uses it |
+|------------|-------------|----------------------|
+| [**OpenAI**](https://openai.com/) | AI research lab | GPT-4o-mini powers orchestration, synthesis, and batch enrichment; text-embedding-3-small generates 85K vectors |
+| [**Mistral AI**](https://mistral.ai/) | French AI lab building open-weight and commercial LLMs | 3 models: moderation (free), classification (Ministral 8B), and code analysis (Devstral) |
+| [**Supabase**](https://supabase.com/) | Open-source Firebase alternative (hosted PostgreSQL) | Production database — 85K packages, metadata, 390K download stats, 27K enriched profiles |
+| [**Qdrant**](https://qdrant.tech/) | Open-source vector database for similarity search | Hosts 85K package embeddings on Qdrant Cloud for semantic package discovery |
+| [**DuckDB**](https://duckdb.org/) | In-process analytical database (like SQLite for analytics) | Local data store with full READMEs for code snippet extraction and offline scripts |
+| [**Google deps.dev**](https://deps.dev/) | Open source dependency intelligence by Google | Primary data source for package dependency graphs and adoption metrics via BigQuery |
+| [**PyPI**](https://pypi.org/) | The Python Package Index — official package repository | READMEs, keywords, classifiers, version history, and dependency lists for 85K packages |
+| [**pypistats.org**](https://pypistats.org/) | Community-run PyPI download statistics API | 6 months of daily download data powering trend charts |
+| [**Next.js**](https://nextjs.org/) | React framework for production web apps | Frontend with SSE streaming, real-time UI updates |
+| [**FastAPI**](https://fastapi.tiangolo.com/) | Modern Python web framework for building APIs | Backend serving SSE streams, REST endpoints, and orchestrating the agent pipeline |
 
 ---
 
